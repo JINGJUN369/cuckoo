@@ -67,20 +67,79 @@ const ProjectEdit_v11 = () => {
     );
   }
 
+  // 변경 이력을 localStorage에 저장하는 함수
+  const saveChangeHistory = useCallback((projectId, changeRecord) => {
+    try {
+      const allChanges = JSON.parse(localStorage.getItem('projectChangeHistory') || '{}');
+      
+      if (!allChanges[projectId]) {
+        allChanges[projectId] = [];
+      }
+      
+      // 새로운 변경사항을 맨 앞에 추가
+      allChanges[projectId].unshift(changeRecord);
+      
+      // 각 프로젝트당 최대 100개의 변경사항만 보관
+      if (allChanges[projectId].length > 100) {
+        allChanges[projectId] = allChanges[projectId].slice(0, 100);
+      }
+      
+      localStorage.setItem('projectChangeHistory', JSON.stringify(allChanges));
+    } catch (error) {
+      console.error('❌ [v1.1] Error saving change history:', error);
+    }
+  }, []);
+
+  // 변경 이력 불러오기
+  const getChangeHistory = useCallback((projectId) => {
+    try {
+      const allChanges = JSON.parse(localStorage.getItem('projectChangeHistory') || '{}');
+      return allChanges[projectId] || [];
+    } catch (error) {
+      console.error('❌ [v1.1] Error getting change history:', error);
+      return [];
+    }
+  }, []);
+
   // 필드 업데이트 핸들러 (v1.1 개선)
   const handleUpdate = useCallback((stage, field, value) => {
     console.log(`📝 [v1.1] ProjectEdit update: ${stage}.${field} = ${value}`);
     
-    // 변경 이력 추가
-    const change = {
-      stage,
-      field,
-      value,
-      timestamp: new Date().toISOString(),
-      user: user?.name || '익명'
-    };
+    const currentTime = new Date();
+    const previousValue = selectedProject[stage]?.[field];
     
-    setChangeHistory(prev => [change, ...prev.slice(0, 9)]); // 최근 10개만 유지
+    // 값이 실제로 변경된 경우에만 이력 추가
+    if (previousValue !== value) {
+      // 변경 이력 생성
+      const changeRecord = {
+        id: `${currentTime.getTime()}_${Math.random().toString(36).substr(2, 9)}`,
+        projectId: selectedProject.id,
+        projectName: selectedProject.name,
+        stage,
+        field,
+        previousValue,
+        newValue: value,
+        timestamp: currentTime.toISOString(),
+        date: currentTime.toLocaleDateString('ko-KR'),
+        time: currentTime.toLocaleTimeString('ko-KR'),
+        user: {
+          id: user?.id || 'unknown',
+          name: user?.name || '익명',
+          team: user?.team || '알 수 없음'
+        },
+        changeType: previousValue ? 'update' : 'create',
+        description: `${stage} 단계의 ${field} 필드가 ${previousValue ? '수정' : '생성'}되었습니다.`
+      };
+      
+      // 변경 이력을 localStorage에 저장
+      saveChangeHistory(selectedProject.id, changeRecord);
+      
+      // 상태 업데이트 (UI용 - 최근 10개만)
+      setChangeHistory(prev => {
+        const updated = [changeRecord, ...prev];
+        return updated.slice(0, 10);
+      });
+    }
     
     // Create updates object with only the changed values
     const updates = {
@@ -192,6 +251,14 @@ const ProjectEdit_v11 = () => {
       setCurrentStage(newStage);
     }
   }, [hasUnsavedChanges]);
+
+  // 컴포넌트 마운트 시 변경 이력 로드
+  useEffect(() => {
+    if (selectedProject?.id) {
+      const history = getChangeHistory(selectedProject.id);
+      setChangeHistory(history.slice(0, 10)); // 최근 10개만 표시
+    }
+  }, [selectedProject?.id, getChangeHistory]);
 
   // 컴포넌트 언마운트 시 자동 저장 타이머 정리
   useEffect(() => {
@@ -345,18 +412,66 @@ const ProjectEdit_v11 = () => {
       {/* Recent Changes (변경 이력) */}
       {changeHistory.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm border p-4">
-          <h3 className="text-lg font-medium text-gray-900 mb-3">📋 최근 변경사항</h3>
-          <div className="space-y-2 max-h-32 overflow-y-auto">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-lg font-medium text-gray-900">📋 최근 변경사항</h3>
+            <span className="text-xs text-gray-500">최근 {changeHistory.length}개 항목</span>
+          </div>
+          <div className="space-y-3 max-h-40 overflow-y-auto">
             {changeHistory.slice(0, 5).map((change, index) => (
-              <div key={index} className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                <span className="font-medium">{change.stage}.{change.field}</span>
-                <span className="mx-2">→</span>
-                <span className="text-blue-600">{change.value}</span>
-                <span className="float-right text-xs text-gray-400">
-                  {new Date(change.timestamp).toLocaleTimeString()}
-                </span>
+              <div key={change.id || index} className="border-l-4 border-blue-200 bg-gray-50 p-3 rounded-r-lg">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-medium text-gray-900">
+                        {change.stage} 단계
+                      </span>
+                      <span className="text-gray-400">•</span>
+                      <span className="text-sm text-gray-600">{change.field}</span>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        change.changeType === 'create' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {change.changeType === 'create' ? '생성' : '수정'}
+                      </span>
+                    </div>
+                    
+                    {change.previousValue && (
+                      <div className="text-xs text-gray-500 mb-1">
+                        이전: <span className="line-through">{change.previousValue}</span>
+                      </div>
+                    )}
+                    
+                    <div className="text-sm text-blue-700 font-medium">
+                      새 값: {change.newValue || '(비어있음)'}
+                    </div>
+                  </div>
+                  
+                  <div className="text-right ml-4 flex-shrink-0">
+                    <div className="text-xs text-gray-600 font-medium">
+                      {change.user?.name} ({change.user?.team})
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {change.date} {change.time}
+                    </div>
+                  </div>
+                </div>
               </div>
             ))}
+            
+            {changeHistory.length > 5 && (
+              <div className="text-center pt-2">
+                <button 
+                  className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                  onClick={() => {
+                    const allHistory = getChangeHistory(selectedProject.id);
+                    setChangeHistory(allHistory.slice(0, 20)); // 더 많이 보기
+                  }}
+                >
+                  더 보기 ({changeHistory.length - 5}개 더)
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

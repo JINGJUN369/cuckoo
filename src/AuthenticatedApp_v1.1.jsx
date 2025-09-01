@@ -7,6 +7,7 @@ import AdminPage from './pages/Admin/AdminPage';
 import { ProjectProvider } from './hooks/useProjectStore_v1.1';
 import AppRouter from './AppRouter';
 import { BrandHeader } from './components/ui';
+import PasswordChangeModal from './components/ui/PasswordChangeModal';
 
 /**
  * v1.1 AuthenticatedApp - 개선된 인증 및 앱 구조
@@ -22,8 +23,16 @@ import { BrandHeader } from './components/ui';
 const MainContent = () => {
   const { user, logout, isLoading } = useAuth();
   const [currentPage, setCurrentPage] = useState('projects'); // 'projects', 'admin'
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
-  console.log(`🔐 [v1.1] MainContent - user:`, user?.id, 'isLoading:', isLoading);
+  console.log(`🔐 [v1.1] MainContent - user:`, user?.id, 'isLoading:', isLoading, 'mustChangePassword:', user?.mustChangePassword);
+
+  // 비밀번호 변경 모달 자동 표시
+  React.useEffect(() => {
+    if (user && user.mustChangePassword && !showPasswordModal) {
+      setShowPasswordModal(true);
+    }
+  }, [user, showPasswordModal]);
 
   if (isLoading) {
     return (
@@ -45,6 +54,32 @@ const MainContent = () => {
   const isAdmin = user && (user.id === 'admin' || user.team === '관리팀' || user.id === '10001');
   
   console.log(`🏠 [v1.1] Authenticated user:`, user.id, 'isAdmin:', isAdmin, 'currentPage:', currentPage);
+
+  const handlePasswordChangeClose = () => {
+    if (user?.mustChangePassword) {
+      const confirm = window.confirm('비밀번호 변경은 필수입니다. 로그아웃하시겠습니까?');
+      if (confirm) {
+        logout();
+      }
+    } else {
+      setShowPasswordModal(false);
+    }
+  };
+
+  const handlePasswordChangeSuccess = () => {
+    setShowPasswordModal(false);
+    // 사용자 정보 업데이트 (mustChangePassword를 false로 설정)
+    if (user) {
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const userIndex = users.findIndex(u => u.id === user.id);
+      if (userIndex !== -1) {
+        users[userIndex].mustChangePassword = false;
+        localStorage.setItem('users', JSON.stringify(users));
+        localStorage.setItem('currentUser', JSON.stringify(users[userIndex]));
+      }
+    }
+    window.location.reload(); // 업데이트된 정보로 새로고침
+  };
 
   return (
     <ProjectProvider>
@@ -77,6 +112,14 @@ const MainContent = () => {
             </div>
           )}
         </main>
+
+        {/* 강제 비밀번호 변경 모달 */}
+        <PasswordChangeModal
+          isOpen={showPasswordModal}
+          onClose={handlePasswordChangeClose}
+          isRequired={user?.mustChangePassword}
+          onSuccess={handlePasswordChangeSuccess}
+        />
       </div>
     </ProjectProvider>
   );

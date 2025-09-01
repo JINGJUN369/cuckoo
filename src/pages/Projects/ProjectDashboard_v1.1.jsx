@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useProjectStore } from '../../hooks/useProjectStore_v1.1';
 import { getProjectProgress, getStageProgress } from '../../types/project';
 import { Button } from '../../components/ui';
+import { exportProjectsToExcel } from '../../utils/excelExport';
 
 /**
  * v1.1 ProjectDashboard - 통합된 프로젝트 대시보드 시스템
@@ -347,6 +348,13 @@ const ProjectDashboard_v11 = ({ type = 'project' }) => {
                 </p>
               </div>
               <div className="flex space-x-3">
+                <Button 
+                  onClick={() => exportProjectsToExcel(projects, 'dashboard_projects')}
+                  variant="outline"
+                  className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                >
+                  📊 엑셀 추출
+                </Button>
                 <Button onClick={() => setCurrentView('list')} variant="outline">
                   📋 프로젝트 목록
                 </Button>

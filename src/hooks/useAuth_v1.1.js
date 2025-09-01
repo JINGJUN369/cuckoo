@@ -310,6 +310,7 @@ export const AuthProvider_v11 = ({ children }) => {
             loginAttempts: 0,
             lastLogin: null,
             createdAt: new Date().toISOString(),
+            registeredAt: new Date().toISOString(),
             permissions: ROLE_PERMISSIONS[ROLES.ADMIN]
           };
           
@@ -416,12 +417,16 @@ export const AuthProvider_v11 = ({ children }) => {
         throw new Error('비밀번호가 올바르지 않습니다.');
       }
 
+      // 000000 비밀번호 사용 시 비밀번호 변경 강제
+      const mustChangePassword = user.password === '000000' || user.mustChangePassword;
+      
       // 로그인 성공
       const sessionExpiry = Date.now() + SECURITY_CONFIG.SESSION_TIMEOUT;
       const updatedUser = {
         ...user,
         lastLogin: new Date().toISOString(),
-        loginCount: (user.loginCount || 0) + 1
+        loginCount: (user.loginCount || 0) + 1,
+        mustChangePassword: mustChangePassword
       };
 
       // 사용자 정보 업데이트
@@ -486,9 +491,11 @@ export const AuthProvider_v11 = ({ children }) => {
         role: userData.role || ROLES.USER,
         status: 'pending',
         createdAt: new Date().toISOString(),
+        registeredAt: new Date().toISOString(),
         lastLogin: null,
         loginCount: 0,
         isLocked: false,
+        mustChangePassword: userData.password === '000000',
         permissions: ROLE_PERMISSIONS[userData.role || ROLES.USER] || []
       };
 

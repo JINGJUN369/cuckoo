@@ -4,6 +4,7 @@ import { getProjectProgress } from '../../types/project';
 import { LoadingSpinner } from '../../components/ui';
 import ProjectCard_v11 from '../../components/ui/ProjectCard_v1.1';
 import NewProjectModal_v11 from './components/NewProjectModal_v1.1';
+import { exportProjectsToExcel } from '../../utils/excelExport';
 
 /**
  * v1.1 ProjectList - 통합된 프로젝트 목록 시스템
@@ -244,12 +245,21 @@ const ProjectList_v11 = () => {
             </button>
           </div>
           
-          <button 
-            onClick={() => setShowNewProjectModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-          >
-            ➕ 새 프로젝트
-          </button>
+          <div className="flex space-x-3">
+            <button 
+              onClick={() => exportProjectsToExcel(filteredAndSortedProjects, 'project_list')}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+              title="현재 필터링된 프로젝트 목록을 엑셀(CSV)로 내보내기"
+            >
+              📊 엑셀 추출
+            </button>
+            <button 
+              onClick={() => setShowNewProjectModal(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+            >
+              ➕ 새 프로젝트
+            </button>
+          </div>
         </div>
         
         {/* 검색 및 필터 (향상된 버전) */}
