@@ -152,7 +152,6 @@ const LoginPage = ({ onRegisterClick, onResetPasswordClick }) => {
                       <ul className="list-disc pl-4 space-y-1">
                         <li>회원가입을 통해 계정을 신청하세요</li>
                         <li>관리자 승인 후 로그인이 가능합니다</li>
-                        <li>기본 관리자: admin / admin123</li>
                       </ul>
                     </div>
                   </div>
