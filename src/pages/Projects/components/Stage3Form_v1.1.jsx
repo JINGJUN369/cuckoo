@@ -21,99 +21,67 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
   // 필드 정의 (v1.1 확장)
   const formFields = useMemo(() => [
     {
-      key: 'initialProduction',
-      label: '1. 최초 양산',
+      key: 'firstPartsOrderDate',
+      label: '1. 1차 부품 발주 예정일',
       type: 'date',
       required: true,
-      hasExecuted: 'initialProductionExecuted',
-      gridCols: 1
-    },
-    {
-      key: 'bomCompletion',
-      label: '2. BOM 구성 완료',
-      type: 'date',
-      required: true,
-      hasExecuted: 'bomCompletionExecuted',
+      hasExecuted: 'firstPartsOrderDateExecuted',
       gridCols: 1
     },
     {
       key: 'bomManager',
-      label: '3. BOM 관리자',
+      label: '2. BOM 구성 담당자',
       type: 'text',
-      placeholder: '예: 김관리 / 생산관리팀',
+      placeholder: '예: 김관리',
       required: true,
       gridCols: 1
     },
     {
-      key: 'priceRegistration',
-      label: '4. 단가 등록',
+      key: 'bomCompletionDate',
+      label: '3. BOM 구성 예정일',
       type: 'date',
       required: true,
-      hasExecuted: 'priceRegistrationExecuted',
+      hasExecuted: 'bomCompletionDateExecuted',
       gridCols: 1
     },
     {
-      key: 'partsProcurement',
-      label: '5. 부품 발주',
+      key: 'priceManager',
+      label: '4. 단가 등록 담당자',
+      type: 'text',
+      placeholder: '예: 이단가',
+      required: true,
+      gridCols: 1
+    },
+    {
+      key: 'priceRegistrationDate',
+      label: '5. 단가 등록 예정일자',
       type: 'date',
       required: true,
-      hasExecuted: 'partsProcurementExecuted',
+      hasExecuted: 'priceRegistrationDateExecuted',
       gridCols: 1
     },
     {
-      key: 'partsDelivery',
-      label: '6. 부품 입고',
+      key: 'partsReceiptDate',
+      label: '6. 부품 입고 예정일자',
       type: 'date',
       required: true,
-      hasExecuted: 'partsDeliveryExecuted',
+      hasExecuted: 'partsReceiptDateExecuted',
       gridCols: 1
     },
     {
-      key: 'productionPlanning',
-      label: '7. 양산 계획 수립',
+      key: 'partsReceiptManager',
+      label: '7. 부품 입고 확인 담당자',
+      type: 'text',
+      placeholder: '예: 박입고',
+      required: true,
+      gridCols: 1
+    },
+    {
+      key: 'branchOrderGuideDate',
+      label: '8. 지점 부품 발주 안내 예정일',
       type: 'date',
       required: true,
-      hasExecuted: 'productionPlanningExecuted',
-      gridCols: 1
-    },
-    {
-      key: 'qualityAssurance',
-      label: '8. 품질보증 체계',
-      type: 'date',
-      required: true,
-      hasExecuted: 'qualityAssuranceExecuted',
-      gridCols: 1
-    },
-    {
-      key: 'packageDesign',
-      label: '9. 포장 디자인',
-      type: 'date',
-      required: false,
-      hasExecuted: 'packageDesignExecuted',
-      gridCols: 1
-    },
-    {
-      key: 'marketingMaterial',
-      label: '10. 마케팅 자료',
-      type: 'date',
-      required: false,
-      hasExecuted: 'marketingMaterialExecuted',
-      gridCols: 1
-    },
-    {
-      key: 'distributionChannel',
-      label: '11. 유통채널 구축',
-      type: 'date',
-      required: false,
-      hasExecuted: 'distributionChannelExecuted',
-      gridCols: 1
-    },
-    {
-      key: 'afterService',
-      label: '12. A/S 체계 구축',
-      type: 'date',
-      required: true,
-      hasExecuted: 'afterServiceExecuted',
+      hasExecuted: 'branchOrderGuideDateExecuted',
       gridCols: 1
     }
   ], []);
@@ -124,7 +92,7 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
       return '필수 입력 항목입니다.';
     }
     
-    if (key !== 'bomManager' && value) { // 날짜 필드들
+    if (key !== 'bomManager' && key !== 'priceManager' && key !== 'partsReceiptManager' && value) { // 날짜 필드들
       const date = new Date(value);
       if (isNaN(date.getTime())) {
         return '올바른 날짜 형식이 아닙니다.';
@@ -134,44 +102,37 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
       const stage1Data = project?.stage1 || {};
       if (stage1Data.massProductionDate) {
         const massDate = new Date(stage1Data.massProductionDate);
-        if (key === 'initialProduction') {
-          // 최초 양산일은 양산 예정일과 같거나 그 이후여야 함
-          if (date < massDate) {
-            return '최초 양산일은 양산 예정일 이후여야 합니다.';
-          }
-        } else {
-          // 다른 모든 작업들은 양산 예정일 이전에 완료되어야 함
-          if (date > massDate) {
-            return '이 작업은 양산 예정일 이전에 완료되어야 합니다.';
-          }
+        // 모든 3단계 작업들은 양산 예정일 이전에 완료되어야 함
+        if (date > massDate) {
+          return '이 작업은 양산 예정일 이전에 완료되어야 합니다.';
         }
       }
       
       // 단계별 순서 검증
-      if (key === 'priceRegistration' && stage3Data.bomCompletion) {
-        const bomDate = new Date(stage3Data.bomCompletion);
+      if (key === 'priceRegistrationDate' && stage3Data.bomCompletionDate) {
+        const bomDate = new Date(stage3Data.bomCompletionDate);
         if (date < bomDate) {
           return '단가 등록은 BOM 구성 완료 이후에 진행되어야 합니다.';
         }
       }
       
-      if (key === 'partsProcurement' && stage3Data.priceRegistration) {
-        const priceDate = new Date(stage3Data.priceRegistration);
+      if (key === 'firstPartsOrderDate' && stage3Data.priceRegistrationDate) {
+        const priceDate = new Date(stage3Data.priceRegistrationDate);
         if (date < priceDate) {
           return '부품 발주는 단가 등록 이후에 진행되어야 합니다.';
         }
       }
       
-      if (key === 'partsDelivery' && stage3Data.partsProcurement) {
-        const procurementDate = new Date(stage3Data.partsProcurement);
-        if (date < procurementDate) {
+      if (key === 'partsReceiptDate' && stage3Data.firstPartsOrderDate) {
+        const orderDate = new Date(stage3Data.firstPartsOrderDate);
+        if (date < orderDate) {
           return '부품 입고는 부품 발주 이후에 진행되어야 합니다.';
         }
       }
     }
     
     return null;
-  }, [project?.stage1, stage3Data.bomCompletion, stage3Data.priceRegistration, stage3Data.partsProcurement]);
+  }, [project?.stage1, stage3Data.bomCompletionDate, stage3Data.priceRegistrationDate, stage3Data.firstPartsOrderDate]);
 
   // 필드 업데이트 핸들러
   const handleFieldChange = useCallback((field, value) => {

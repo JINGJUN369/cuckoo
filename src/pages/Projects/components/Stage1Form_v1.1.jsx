@@ -48,13 +48,13 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
       key: 'derivativeModel',
       label: '4. 파생모델',
       type: 'text', 
-      placeholder: '예: 색상 등',
+      placeholder: '예: CHP-06DRW, CHP-06DRB',
       required: false,
       gridCols: 1
     },
     {
       key: 'launchDate',
-      label: '5. 출시 예정일',
+      label: '5. 출시예정일',
       type: 'date',
       required: true,
       hasExecuted: 'launchDateExecuted',
@@ -62,25 +62,25 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
     },
     {
       key: 'productManager',
-      label: '6. 상품개발담당자',
+      label: '6. 상품개발 담당자',
       type: 'text',
-      placeholder: '예: 홍길동 / 상품개발팀',
+      placeholder: '예: 홍길동',
       required: true,
       gridCols: 1
     },
     {
       key: 'mechanicalEngineer',
-      label: '7. 연구소 담당자(기구)',
+      label: '7. 연구소 담당자 (기구)',
       type: 'text',
-      placeholder: '예: 김기구 / 연구개발팀',
+      placeholder: '예: 김기구',
       required: false,
       gridCols: 1
     },
     {
       key: 'circuitEngineer',
-      label: '8. 연구소 담당자(회로)',
+      label: '8. 연구소 담당자 (회로)',
       type: 'text',
-      placeholder: '예: 이회로 / 연구개발팀',
+      placeholder: '예: 이회로',
       required: false,
       gridCols: 1
     },

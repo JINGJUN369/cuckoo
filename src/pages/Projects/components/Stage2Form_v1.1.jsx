@@ -21,83 +21,59 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
   // 필드 정의 (v1.1 확장)
   const formFields = useMemo(() => [
     {
-      key: 'pilotProduction',
-      label: '1. 파일럿 생산',
+      key: 'pilotProductionDate',
+      label: '1. 파일럿 생산 예정일(샘플입고일)',
       type: 'date',
       required: true,
-      hasExecuted: 'pilotProductionExecuted',
+      hasExecuted: 'pilotProductionDateExecuted',
       gridCols: 1
     },
     {
-      key: 'techTransfer',
-      label: '2. 기술이전',
+      key: 'techTransferDate',
+      label: '2. 기술이전 예정일',
       type: 'date',
       required: true,
-      hasExecuted: 'techTransferExecuted',
+      hasExecuted: 'techTransferDateExecuted',
       gridCols: 1
     },
     {
-      key: 'installationEntity',
-      label: '3. 설치주체',
+      key: 'installationParty',
+      label: '3. 설치 주체',
       type: 'text',
       placeholder: '예: 자사, 외주업체명',
       required: true,
       gridCols: 1
     },
     {
-      key: 'serviceEntity',
-      label: '4. 서비스주체',
+      key: 'serviceParty',
+      label: '4. 서비스 주체',
       type: 'text',
       placeholder: '예: 자사, 서비스업체명',
       required: true,
       gridCols: 1
     },
     {
-      key: 'qualityStandard',
-      label: '5. 품질기준',
-      type: 'text',
-      placeholder: '예: KS, ISO 등',
+      key: 'trainingDate',
+      label: '5. 교육 예정일',
+      type: 'date',
+      required: true,
+      hasExecuted: 'trainingDateExecuted',
+      gridCols: 1
+    },
+    {
+      key: 'userManualUpload',
+      label: '6. 사용자 설명서 업로드',
+      type: 'file',
       required: false,
+      hasExecuted: 'userManualUploaded',
       gridCols: 1
     },
     {
-      key: 'safetyTest',
-      label: '6. 안전성 테스트',
-      type: 'date',
-      required: true,
-      hasExecuted: 'safetyTestExecuted',
-      gridCols: 1
-    },
-    {
-      key: 'certification',
-      label: '7. 인증 획득',
-      type: 'date',
+      key: 'techManualUpload',
+      label: '7. 기술교본 업로드',
+      type: 'file',
       required: false,
-      hasExecuted: 'certificationExecuted',
-      gridCols: 1
-    },
-    {
-      key: 'productionLine',
-      label: '8. 생산라인 구축',
-      type: 'date',
-      required: true,
-      hasExecuted: 'productionLineExecuted',
-      gridCols: 1
-    },
-    {
-      key: 'staffTraining',
-      label: '9. 인력 교육',
-      type: 'date',
-      required: true,
-      hasExecuted: 'staffTrainingExecuted',
-      gridCols: 1
-    },
-    {
-      key: 'qualityControl',
-      label: '10. 품질관리 체계',
-      type: 'date',
-      required: true,
-      hasExecuted: 'qualityControlExecuted',
+      hasExecuted: 'techManualUploaded',
       gridCols: 1
     }
   ], []);
@@ -108,9 +84,8 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
       return '필수 입력 항목입니다.';
     }
     
-    if (key.includes('Date') || key.includes('pilotProduction') || key.includes('techTransfer') || 
-        key.includes('safetyTest') || key.includes('certification') || 
-        key.includes('productionLine') || key.includes('staffTraining') || key.includes('qualityControl')) {
+    if (key.includes('Date') || key.includes('pilotProductionDate') || key.includes('techTransferDate') || 
+        key.includes('trainingDate')) {
       if (value) {
         const date = new Date(value);
         if (isNaN(date.getTime())) {
@@ -127,8 +102,8 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
         }
         
         // 단계별 순서 검증
-        if (key === 'techTransfer' && stage2Data.pilotProduction) {
-          const pilotDate = new Date(stage2Data.pilotProduction);
+        if (key === 'techTransferDate' && stage2Data.pilotProductionDate) {
+          const pilotDate = new Date(stage2Data.pilotProductionDate);
           if (date < pilotDate) {
             return '기술이전은 파일럿 생산 이후에 진행되어야 합니다.';
           }
@@ -137,7 +112,7 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
     }
     
     return null;
-  }, [project?.stage1, stage2Data.pilotProduction]);
+  }, [project?.stage1, stage2Data.pilotProductionDate]);
 
   // 필드 업데이트 핸들러
   const handleFieldChange = useCallback((field, value) => {
@@ -297,6 +272,47 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
                     </label>
                   )}
                 </div>
+                {validationErrors[field.key] && touched[field.key] && (
+                  <p className="mt-1 text-sm text-red-600">{validationErrors[field.key]}</p>
+                )}
+              </div>
+            ) : field.type === 'file' ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {field.label}
+                  {field.required && <span className="text-red-500 ml-1">*</span>}
+                </label>
+                <div className="flex items-center space-x-3">
+                  <Input
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        handleFieldChange(field.key, file.name);
+                      }
+                    }}
+                    className={`flex-1 ${
+                      validationErrors[field.key] && touched[field.key] 
+                        ? 'border-red-500 focus:ring-red-500' 
+                        : 'focus:ring-green-500'
+                    }`}
+                  />
+                  {field.hasExecuted && (
+                    <label className="flex items-center whitespace-nowrap cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={stage2Data[field.hasExecuted] || false}
+                        onChange={(e) => handleExecutedChange(field.hasExecuted, e.target.checked)}
+                        className="mr-2 w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                      />
+                      <span className="text-sm text-gray-600">업로드완료</span>
+                    </label>
+                  )}
+                </div>
+                {stage2Data[field.key] && (
+                  <p className="mt-1 text-sm text-green-600">📄 {stage2Data[field.key]}</p>
+                )}
                 {validationErrors[field.key] && touched[field.key] && (
                   <p className="mt-1 text-sm text-red-600">{validationErrors[field.key]}</p>
                 )}
