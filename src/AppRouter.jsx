@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useProjectStore } from './hooks/useProjectStore_v1.1';
-import { useAuth } from './hooks/useAuth_v1.1';
+import { useSupabaseAuth } from './hooks/useSupabaseAuth';
 
 // 프로젝트 페이지 컴포넌트 imports (v1.1 updated)
 import ProjectList_v11 from './pages/Projects/ProjectList_v1.1';
@@ -43,11 +43,16 @@ const AppRouter = () => {
   console.log(`🚀 [v1.1] AppRouter rendered (count: ${renderCount + 1})`);
   
   // 인증 상태 구독
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, loading: isLoading } = useSupabaseAuth();
   
   // Project Store 상태 구독
-  const { state, setCurrentView } = useProjectStore();
-  const { ui, selectedProject } = state;
+  const { 
+    ui, 
+    selectedProject, 
+    loading,
+    error,
+    setCurrentView 
+  } = useProjectStore();
   const currentView = ui?.currentView || (isAuthenticated ? 'list' : 'login');
   
   // 렌더링 카운터 증가
@@ -162,13 +167,13 @@ const AppRouter = () => {
   }, [currentView, isAuthenticated, isLoading, user]);
   
   // 에러 경계 처리
-  if (!state) {
-    console.error(`❌ [v1.1] No state available`);
+  if (error) {
+    console.error(`❌ [v1.1] Supabase error:`, error);
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-bold text-red-600 mb-2">시스템 오류</h2>
-          <p className="text-gray-600">상태를 불러올 수 없습니다.</p>
+          <p className="text-gray-600">데이터를 불러올 수 없습니다: {error}</p>
         </div>
       </div>
     );

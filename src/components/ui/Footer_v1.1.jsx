@@ -1,13 +1,13 @@
 import React from 'react';
-import { useAuth } from '../../hooks/useAuth_v1.1';
+import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
 
-const Footer_v11 = () => {
+const Footer = () => {
   console.log("🦶 FOOTER IS RENDERING!");
-  const { user, isAuthenticated } = useAuth();
+  const { user, profile, isAuthenticated } = useSupabaseAuth();
   
   const currentYear = new Date().getFullYear();
-  const version = "1.1.0";
-  const buildDate = "2025-09-01";
+  const version = "1.2.0";
+  const buildDate = "2025-09-04";
   
   return (
     <footer className="bg-white border-t border-gray-200 mt-auto">
@@ -37,7 +37,7 @@ const Footer_v11 = () => {
             </div>
             {isAuthenticated && (
               <div className="text-xs text-gray-400">
-                사용자: {user?.name} ({user?.role})
+                사용자: {profile?.name || user?.email} ({profile?.role || 'user'})
               </div>
             )}
           </div>
@@ -85,6 +85,9 @@ const Footer_v11 = () => {
               {isAuthenticated && (
                 <div>세션 ID: {user?.id?.slice(-8)}</div>
               )}
+              {isAuthenticated && profile?.name && (
+                <div>사용자: {profile.name}</div>
+              )}
             </div>
           </div>
         )}
@@ -93,4 +96,4 @@ const Footer_v11 = () => {
   );
 };
 
-export default Footer_v11;
+export default Footer;

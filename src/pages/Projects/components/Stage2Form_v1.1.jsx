@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Input } from '../../../components/ui';
+import { getStageProgress } from '../../../types/project';
 
 /**
  * v1.1 Stage2Form - 2단계 생산준비 폼 (최적화됨)
@@ -130,31 +131,34 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
       [field]: error
     }));
     
-    // 상위로 변경사항 전달
+    // 상위로 변경사항 전달 - 전체 stage2 데이터 업데이트
     if (onUpdate && mode === 'edit') {
-      onUpdate('stage2', field, value);
+      const updatedStage2Data = {
+        ...stage2Data,
+        [field]: value
+      };
+      onUpdate(updatedStage2Data);
     }
-  }, [formFields, validateField, onUpdate, mode]);
+  }, [formFields, validateField, onUpdate, mode, stage2Data]);
 
   // 체크박스 업데이트 핸들러
   const handleExecutedChange = useCallback((field, checked) => {
     console.log(`✅ [v1.1] Stage2Form executed updated: ${field} = ${checked}`);
     
     if (onUpdate && mode === 'edit') {
-      onUpdate('stage2', field, checked);
+      const updatedStage2Data = {
+        ...stage2Data,
+        [field]: checked
+      };
+      onUpdate(updatedStage2Data);
     }
-  }, [onUpdate, mode]);
+  }, [onUpdate, mode, stage2Data]);
 
-  // 진행률 계산
-  const completedFields = useMemo(() => {
-    return formFields.filter(field => {
-      const value = stage2Data[field.key];
-      return value && value.toString().trim() !== '';
-    }).length;
-  }, [formFields, stage2Data]);
-
-  const totalFields = formFields.length;
-  const progressPercentage = Math.round((completedFields / totalFields) * 100);
+  // 진행률 계산 (표준화된 함수 사용)
+  const progressPercentage = useMemo(() => {
+    if (!project) return 0;
+    return getStageProgress(project, 'stage2');
+  }, [project]);
 
   // 읽기 전용 모드 렌더링
   if (mode === 'view') {
@@ -166,7 +170,7 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
             <h3 className="text-xl font-semibold text-green-600">2차 단계 - 생산 준비</h3>
           </div>
           <div className="text-sm text-gray-600">
-            진행률: {progressPercentage}% ({completedFields}/{totalFields})
+            진행률: {progressPercentage}%
           </div>
         </div>
         
@@ -227,8 +231,7 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
         </div>
         <div className="flex items-center space-x-4">
           <div className="text-sm text-gray-600">
-            진행률: <span className="font-medium text-green-600">{progressPercentage}%</span> 
-            <span className="text-gray-400"> ({completedFields}/{totalFields})</span>
+            진행률: <span className="font-medium text-green-600">{progressPercentage}%</span>
           </div>
           {/* 진행률 바 */}
           <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">

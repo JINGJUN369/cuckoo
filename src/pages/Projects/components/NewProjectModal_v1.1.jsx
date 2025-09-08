@@ -11,7 +11,7 @@ import { Button } from '../../../components/ui';
  * - 자동완성 지원
  * - 접근성 개선
  */
-const NewProjectModal_v11 = ({ isOpen, onClose, onSubmit }) => {
+const NewProjectModal_v11 = ({ isOpen, onClose, onSubmit, resetLoadingState }) => {
   console.log('📝 [v1.1] NewProjectModal rendering', { isOpen });
 
   // Form state
@@ -176,8 +176,8 @@ const NewProjectModal_v11 = ({ isOpen, onClose, onSubmit }) => {
 
       console.log('✅ [v1.1] NewProjectModal: Project created', newProject);
       
-      // 부모 컴포넌트에 제출
-      await onSubmit(newProject);
+      // 부모 컴포넌트에 제출 - Promise 결과를 기다림
+      const result = await onSubmit(newProject);
 
       // 폼 초기화
       setFormData({
@@ -189,14 +189,24 @@ const NewProjectModal_v11 = ({ isOpen, onClose, onSubmit }) => {
         description: ''
       });
       setErrors({});
+      
+      // 결과 반환 (Promise chain 유지)
+      return result;
 
     } catch (error) {
       console.error('❌ [v1.1] NewProjectModal: Submission error', error);
-      setErrors({ submit: '프로젝트 생성 중 오류가 발생했습니다.' });
+      setErrors({ submit: error.message || '프로젝트 생성 중 오류가 발생했습니다.' });
+      
+      // 상위 스토어의 로딩 상태도 초기화 (옵션)
+      if (resetLoadingState) {
+        resetLoadingState();
+      }
+      
+      throw error; // 에러를 다시 throw하여 상위에서 처리할 수 있도록
     } finally {
       setIsSubmitting(false);
     }
-  }, [formData, isSubmitting, validateForm, generateProjectId, onSubmit]);
+  }, [formData, isSubmitting, validateForm, generateProjectId, onSubmit, resetLoadingState]);
 
   // 모달 닫기 핸들러
   const handleClose = useCallback(() => {

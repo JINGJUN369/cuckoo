@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../hooks/useAuth_v1.1';
+import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
 import { Button, Input } from '../../components/ui';
 
 const RegisterPage = ({ onBackToLogin }) => {
-  const { register } = useAuth();
+  const { signUp, loading } = useSupabaseAuth();
   const [formData, setFormData] = useState({
     id: '',
     email: '',
+    password: '',
+    confirmPassword: '',
     name: '',
     team: ''
   });
@@ -62,14 +64,14 @@ const RegisterPage = ({ onBackToLogin }) => {
     setIsSubmitting(true);
 
     try {
-      const result = await register(formData);
+      const result = await signUp(formData.email, formData.password, formData.name, formData.team);
       
-      if (result.success) {
+      if (result.error) {
+        alert(`회원가입 실패: ${result.error.message}`);
+      } else {
         // 성공 팝업
         alert('회원가입 신청이 완료되었습니다.\n관리자 승인 후 이용 가능합니다.\n승인 대기중입니다.');
         onBackToLogin();
-      } else {
-        alert(`회원가입 실패: ${result.error}`);
       }
     } catch (error) {
       alert('회원가입 처리 중 오류가 발생했습니다.');

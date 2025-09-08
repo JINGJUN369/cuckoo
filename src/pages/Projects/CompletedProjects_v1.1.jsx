@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useProjectStore } from '../../hooks/useProjectStore_v1.1';
-import { useAuth } from '../../hooks/useAuth_v1.1';
+import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
 import { getProjectProgress } from '../../types/project';
 import { Button } from '../../components/ui';
 import ProjectCard_v11 from '../../components/ui/ProjectCard_v1.1';
@@ -22,9 +22,9 @@ import { exportToCsv, exportToIcal } from '../../utils/calendarExport_v1.1';
 const CompletedProjects_v11 = () => {
   console.log('📦 [v1.1] CompletedProjects rendering');
 
-  const { state, setCurrentView, setSelectedProject, moveToCompleted, restoreProject } = useProjectStore();
-  const { user } = useAuth();
-  const { projects = [], completedProjects = [] } = state;
+  const { state, setCurrentView, setSelectedProject, completeProject, deleteProject } = useProjectStore();
+  const { user } = useSupabaseAuth();
+  const { projects = [], completedProjects = [] } = state || {};
 
   // 로컬 상태
   const [searchTerm, setSearchTerm] = useState('');
@@ -200,20 +200,14 @@ const CompletedProjects_v11 = () => {
     }
 
     try {
-      await moveToCompleted(project.id, {
-        completedBy: user?.id,
-        completedByName: user?.name,
-        completedAt: new Date().toISOString(),
-        finalProgress: getProjectProgress(project),
-        archiveReason: 'normal_completion'
-      });
+      await completeProject(project.id);
       
       console.log('✅ [v1.1] Project completed successfully');
     } catch (error) {
       console.error('❌ [v1.1] Error completing project:', error);
       alert('프로젝트 완료 처리 중 오류가 발생했습니다.');
     }
-  }, [moveToCompleted, user]);
+  }, [completeProject, user]);
 
   // 프로젝트 복원
   const handleRestoreProject = useCallback(async (project) => {
@@ -222,18 +216,14 @@ const CompletedProjects_v11 = () => {
     }
 
     try {
-      await restoreProject(project.id, {
-        restoredBy: user?.id,
-        restoredByName: user?.name,
-        restoredAt: new Date().toISOString()
-      });
-      
-      console.log('✅ [v1.1] Project restored successfully');
+      // TODO: 복원 기능은 추후 구현 예정
+      alert('프로젝트 복원 기능은 현재 개발 중입니다.');
+      console.log('✅ [v1.1] Project restore requested (not implemented yet)');
     } catch (error) {
       console.error('❌ [v1.1] Error restoring project:', error);
       alert('프로젝트 복원 중 오류가 발생했습니다.');
     }
-  }, [restoreProject, user]);
+  }, [user]);
 
   // 완료 데이터 내보내기
   const handleExportCompleted = useCallback((format = 'csv') => {

@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../hooks/useAuth_v1.1';
+import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
 import { BrandHeader } from '../../components/ui';
-import { colors } from '../../styles/design-tokens';
 
 const LoginPage = ({ onRegisterClick, onResetPasswordClick }) => {
-  const { login, isLoading, error } = useAuth();
+  const { signIn, loading } = useSupabaseAuth();
   const [formData, setFormData] = useState({
-    userId: '',
+    email: '',
     password: ''
   });
   const [loginError, setLoginError] = useState('');
@@ -19,8 +18,8 @@ const LoginPage = ({ onRegisterClick, onResetPasswordClick }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.userId.trim()) {
-      setLoginError('사번을 입력해주세요.');
+    if (!formData.email.trim()) {
+      setLoginError('이메일을 입력해주세요.');
       return;
     }
     
@@ -29,10 +28,10 @@ const LoginPage = ({ onRegisterClick, onResetPasswordClick }) => {
       return;
     }
 
-    const result = await login(formData.userId, formData.password);
+    const result = await signIn(formData.email, formData.password);
     
-    if (!result.success) {
-      setLoginError(result.error);
+    if (result.error) {
+      setLoginError(result.error.message || '로그인에 실패했습니다.');
     }
   };
 
@@ -63,15 +62,15 @@ const LoginPage = ({ onRegisterClick, onResetPasswordClick }) => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    사번
+                    이메일
                   </label>
                   <input 
-                    type="text"
-                    value={formData.userId}
-                    onChange={(e) => handleInputChange('userId', e.target.value)}
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
                     onKeyPress={handleKeyPress}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                    placeholder="사번을 입력하세요"
+                    placeholder="이메일을 입력하세요"
                     required
                     autoComplete="username"
                   />
@@ -95,7 +94,7 @@ const LoginPage = ({ onRegisterClick, onResetPasswordClick }) => {
               </div>
 
               {/* 에러 메시지 */}
-              {(loginError || error) && (
+              {loginError && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <div className="flex">
                     <div className="flex-shrink-0">
@@ -103,7 +102,7 @@ const LoginPage = ({ onRegisterClick, onResetPasswordClick }) => {
                     </div>
                     <div className="ml-3">
                       <p className="text-sm text-red-800">
-                        {loginError || error}
+                        {loginError}
                       </p>
                     </div>
                   </div>
@@ -112,10 +111,10 @@ const LoginPage = ({ onRegisterClick, onResetPasswordClick }) => {
               
               <button 
                 type="submit"
-                disabled={isLoading}
+                disabled={loading}
                 className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
-                {isLoading ? '로그인 중...' : '로그인'}
+                {loading ? '로그인 중...' : '로그인'}
               </button>
               
               <div className="flex flex-col space-y-3">

@@ -18,7 +18,7 @@ const Dashboard = () => {
     const active = projects.filter(p => !p.completed);
     const total = active.length;
     const avg = total > 0 
-      ? Math.round(active.reduce((sum, project) => sum + getProjectProgress(project), 0) / total)
+      ? Math.round(active.reduce((sum, project) => sum + getProjectProgress(project).overall, 0) / total)
       : 0;
     return { activeProjects: active, totalProjects: total, avgProgress: avg };
   }, [projects]);
@@ -114,7 +114,7 @@ const Dashboard = () => {
     };
 
     activeProjects.forEach(project => {
-      const progress = getProjectProgress(project);
+      const progress = getProjectProgress(project).overall;
       if (progress <= 25) ranges['0-25%']++;
       else if (progress <= 50) ranges['26-50%']++;
       else if (progress <= 75) ranges['51-75%']++;

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Button, Input } from '../../../components/ui';
-import { useAuth } from '../../../hooks/useAuth_v1.1';
+import { useSupabaseAuth } from '../../../hooks/useSupabaseAuth';
 
 /**
  * v1.1 OpinionForm - 통합된 의견 등록 폼 시스템
@@ -24,7 +24,7 @@ const OpinionForm_v11 = ({
 }) => {
   console.log('💬 [v1.1] OpinionForm rendering', { projectId, stage, mode });
 
-  const { user } = useAuth();
+  const { user } = useSupabaseAuth();
   
   // Form state
   const [formData, setFormData] = useState({
@@ -189,7 +189,7 @@ const OpinionForm_v11 = ({
     }
   }, [tagInput, formData.tags, handleAddTag, handleRemoveTag]);
 
-  // 폼 제출 핸들러
+  // 폼 제출 핸들러 (개선된 버전)
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     
@@ -203,6 +203,7 @@ const OpinionForm_v11 = ({
     }
 
     setIsSubmitting(true);
+    setErrors(prev => ({ ...prev, submit: null }));
 
     try {
       const opinion = {
@@ -233,8 +234,8 @@ const OpinionForm_v11 = ({
 
       console.log('✅ [v1.1] OpinionForm: Opinion created', opinion);
       
-      // 부모 컴포넌트에 제출
-      await onSubmit(opinion);
+      // 부모 컴포넌트에 제출 - Promise 결과를 기다림
+      const result = await onSubmit(opinion);
 
       // Draft 삭제
       const draftKey = `opinion_draft_${projectId}_${stage || 'general'}`;
@@ -257,10 +258,14 @@ const OpinionForm_v11 = ({
       }
 
       setErrors({});
+      
+      // 결과 반환 (Promise chain 유지)
+      return result;
 
     } catch (error) {
       console.error('❌ [v1.1] OpinionForm: Submission error', error);
-      setErrors({ submit: '의견 등록 중 오류가 발생했습니다.' });
+      setErrors({ submit: error.message || '의견 등록 중 오류가 발생했습니다.' });
+      throw error; // 에러를 다시 throw하여 상위에서 처리할 수 있도록
     } finally {
       setIsSubmitting(false);
     }
@@ -275,6 +280,7 @@ const OpinionForm_v11 = ({
     
     // 변경사항이 있으면 확인
     const hasChanges = formData.title.trim() || formData.content.trim();
+    // eslint-disable-next-line no-restricted-globals
     if (hasChanges && !confirm('작성 중인 내용이 있습니다. 정말 닫으시겠습니까?')) {
       return;
     }

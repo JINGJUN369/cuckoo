@@ -4,8 +4,8 @@ import LoginPage from './pages/Auth/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
 import ResetPasswordPage from './pages/Auth/ResetPasswordPage';
 import AdminPage from './pages/Admin/AdminPage';
-import { ProjectProvider } from './hooks/useProjectStore';
-import ProductProgressManagerNew from './ProductProgressManagerNew';
+import { ProjectProvider } from './hooks/useProjectStore_v1.1';
+import MainDashboard_v11 from './pages/Projects/MainDashboard_v1.1';
 import { BrandHeader } from './components/ui';
 
 // 인증된 앱의 메인 콘텐츠
@@ -42,7 +42,7 @@ const MainContent = () => {
 
         {/* 메인 콘텐츠 */}
         <main>
-          {currentPage === 'projects' && <ProductProgressManagerNew />}
+          {currentPage === 'projects' && <MainDashboard_v11 />}
           {currentPage === 'admin' && isAdmin && <AdminPage />}
         </main>
       </div>

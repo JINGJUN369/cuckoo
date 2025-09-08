@@ -417,7 +417,7 @@ const OpinionList_v11 = ({
                     <div className="flex-shrink-0">
                       <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
                         <span className="text-sm font-medium text-white">
-                          {opinion.author?.charAt(0)?.toUpperCase() || '?'}
+                          {(opinion.author && opinion.author.length > 0) ? opinion.author.charAt(0).toUpperCase() : '?'}
                         </span>
                       </div>
                     </div>
@@ -431,7 +431,7 @@ const OpinionList_v11 = ({
                           }`}
                           onClick={() => toggleOpinion(opinion.id)}
                         >
-                          {opinion.title}
+                          {opinion.title || '제목 없음'}
                         </h4>
                         
                         {/* 비공개 표시 */}
@@ -442,9 +442,9 @@ const OpinionList_v11 = ({
                       
                       {/* 메타 정보 */}
                       <div className="flex items-center space-x-2 text-xs text-gray-500 mb-2">
-                        <span className="font-medium text-gray-700">{opinion.author}</span>
+                        <span className="font-medium text-gray-700">{opinion.author || '익명'}</span>
                         <span>•</span>
-                        <span>{opinion.department}</span>
+                        <span>{opinion.department || '부서 미상'}</span>
                         <span>•</span>
                         <span>{formatDate(opinion.createdAt)}</span>
                         {opinion.updatedAt !== opinion.createdAt && (
@@ -613,7 +613,7 @@ const OpinionList_v11 = ({
                 <>
                   <div className="px-6 py-4">
                     <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
-                      {opinion.content}
+                      {opinion.content || '내용이 없습니다.'}
                     </div>
                   </div>
 
@@ -685,7 +685,7 @@ const OpinionList_v11 = ({
                 <div className="px-6 py-2 text-xs text-gray-500 bg-gray-50">
                   <div className="flex items-center justify-between">
                     <span className="truncate">
-                      {opinion.content.slice(0, 100)}{opinion.content.length > 100 && '...'}
+                      {(opinion.content || '').slice(0, 100)}{(opinion.content || '').length > 100 && '...'}
                     </span>
                     <div className="flex items-center space-x-3 ml-4">
                       {opinion.replies && opinion.replies.length > 0 && (

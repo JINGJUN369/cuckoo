@@ -435,10 +435,13 @@ export const ProjectProvider = ({ children }) => {
 
   // v1.1: Context value 최적화 - 불필요한 리렌더링 방지
   const value = useMemo(() => ({
+    // State objects
+    ...state, // projects, ui, opinions, selectedProject, etc.
     state,
     dispatch,
     // Helper methods
     addProject,
+    createProject: addProject, // alias for compatibility
     updateProject,
     deleteProject,
     completeProject,
@@ -447,6 +450,7 @@ export const ProjectProvider = ({ children }) => {
     setCurrentView,
     setLoading,
     setError,
+    resetLoadingState: () => setLoading(false), // add resetLoadingState method
     addOpinion,
     updateOpinion,
     moveToCompleted,

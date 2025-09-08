@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Input } from '../../../components/ui';
+import { getStageProgress } from '../../../types/project';
 
 /**
  * v1.1 Stage1Form - 1단계 기본정보 폼 (최적화됨)
@@ -29,8 +30,16 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
       gridCols: 1
     },
     {
+      key: 'modelName',
+      label: '2. 모델명',
+      type: 'text',
+      placeholder: '예: CP-A100B, WP-3500L',
+      required: true,
+      gridCols: 1
+    },
+    {
       key: 'manufacturer',
-      label: '2. 제조사', 
+      label: '3. 제조사', 
       type: 'text',
       placeholder: '예: 자사, 나누텍, 하이센스',
       required: true,
@@ -38,7 +47,7 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
     },
     {
       key: 'vendor',
-      label: '3. 벤더사',
+      label: '4. 벤더사',
       type: 'text',
       placeholder: '예: 신성전자, TKK',
       required: false,
@@ -46,7 +55,7 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
     },
     {
       key: 'derivativeModel',
-      label: '4. 파생모델',
+      label: '5. 파생모델',
       type: 'text', 
       placeholder: '예: CHP-06DRW, CHP-06DRB',
       required: false,
@@ -54,7 +63,7 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
     },
     {
       key: 'launchDate',
-      label: '5. 출시예정일',
+      label: '6. 출시예정일',
       type: 'date',
       required: true,
       hasExecuted: 'launchDateExecuted',
@@ -62,7 +71,7 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
     },
     {
       key: 'productManager',
-      label: '6. 상품개발 담당자',
+      label: '7. 상품개발 담당자',
       type: 'text',
       placeholder: '예: 홍길동',
       required: true,
@@ -70,7 +79,7 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
     },
     {
       key: 'mechanicalEngineer',
-      label: '7. 연구소 담당자 (기구)',
+      label: '8. 연구소 담당자 (기구)',
       type: 'text',
       placeholder: '예: 김기구',
       required: false,
@@ -78,7 +87,7 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
     },
     {
       key: 'circuitEngineer',
-      label: '8. 연구소 담당자 (회로)',
+      label: '9. 연구소 담당자 (회로)',
       type: 'text',
       placeholder: '예: 이회로',
       required: false,
@@ -86,7 +95,7 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
     },
     {
       key: 'massProductionDate',
-      label: '9. 양산 예정일',
+      label: '10. 양산 예정일',
       type: 'date',
       required: true,
       hasExecuted: 'massProductionDateExecuted',
@@ -128,44 +137,64 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
   // 필드 업데이트 핸들러
   const handleFieldChange = useCallback((field, value) => {
     console.log(`📝 [v1.1] Stage1Form field updated: ${field} = ${value}`);
+    console.log(`📝 [v1.1] Mode: ${mode}, onUpdate exists: ${!!onUpdate}`);
+    console.log(`📝 [v1.1] Current stage1Data:`, stage1Data);
     
     // 터치 상태 업데이트
-    setTouched(prev => ({ ...prev, [field]: true }));
+    setTouched(prev => {
+      const newTouched = { ...prev, [field]: true };
+      console.log(`📝 [v1.1] Updated touched state:`, newTouched);
+      return newTouched;
+    });
     
     // 유효성 검사
     const fieldDef = formFields.find(f => f.key === field);
     const error = validateField(field, value, fieldDef?.required);
     
-    setValidationErrors(prev => ({
-      ...prev,
-      [field]: error
-    }));
+    setValidationErrors(prev => {
+      const newErrors = { ...prev, [field]: error };
+      console.log(`📝 [v1.1] Updated validation errors:`, newErrors);
+      return newErrors;
+    });
     
-    // 상위로 변경사항 전달
+    // 상위로 변경사항 전달 - 전체 stage1 데이터 업데이트
     if (onUpdate && mode === 'edit') {
-      onUpdate('stage1', field, value);
+      const updatedStage1Data = {
+        ...stage1Data,
+        [field]: value
+      };
+      console.log(`📝 [v1.1] Calling onUpdate with:`, updatedStage1Data);
+      console.log(`📝 [v1.1] onUpdate function:`, onUpdate);
+      
+      try {
+        onUpdate(updatedStage1Data);
+        console.log(`✅ [v1.1] onUpdate called successfully`);
+      } catch (error) {
+        console.error(`❌ [v1.1] Error calling onUpdate:`, error);
+      }
+    } else {
+      console.log(`📝 [v1.1] Not calling onUpdate - mode: ${mode}, onUpdate: ${!!onUpdate}`);
     }
-  }, [formFields, validateField, onUpdate, mode]);
+  }, [formFields, validateField, onUpdate, mode, stage1Data]);
 
   // 체크박스 업데이트 핸들러
   const handleExecutedChange = useCallback((field, checked) => {
     console.log(`✅ [v1.1] Stage1Form executed updated: ${field} = ${checked}`);
     
     if (onUpdate && mode === 'edit') {
-      onUpdate('stage1', field, checked);
+      const updatedStage1Data = {
+        ...stage1Data,
+        [field]: checked
+      };
+      onUpdate(updatedStage1Data);
     }
-  }, [onUpdate, mode]);
+  }, [onUpdate, mode, stage1Data]);
 
-  // 진행률 계산
-  const completedFields = useMemo(() => {
-    return formFields.filter(field => {
-      const value = stage1Data[field.key];
-      return value && value.toString().trim() !== '';
-    }).length;
-  }, [formFields, stage1Data]);
-
-  const totalFields = formFields.length;
-  const progressPercentage = Math.round((completedFields / totalFields) * 100);
+  // 진행률 계산 (표준화된 함수 사용)
+  const progressPercentage = useMemo(() => {
+    if (!project) return 0;
+    return getStageProgress(project, 'stage1');
+  }, [project]);
 
   // 읽기 전용 모드 렌더링
   if (mode === 'view') {
@@ -177,7 +206,7 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
             <h3 className="text-xl font-semibold text-blue-600">1차 단계 - 기본 정보</h3>
           </div>
           <div className="text-sm text-gray-600">
-            진행률: {progressPercentage}% ({completedFields}/{totalFields})
+            진행률: {progressPercentage}%
           </div>
         </div>
         
@@ -238,8 +267,7 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
         </div>
         <div className="flex items-center space-x-4">
           <div className="text-sm text-gray-600">
-            진행률: <span className="font-medium text-blue-600">{progressPercentage}%</span> 
-            <span className="text-gray-400"> ({completedFields}/{totalFields})</span>
+            진행률: <span className="font-medium text-blue-600">{progressPercentage}%</span>
           </div>
           {/* 진행률 바 */}
           <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">

@@ -116,80 +116,113 @@ export const isValidProject = (project) => {
 };
 
 export const getProjectProgress = (project) => {
-  if (!isValidProject(project)) return 0;
+  if (!isValidProject(project)) {
+    return { overall: 0, stage1: 0, stage2: 0, stage3: 0 };
+  }
   
-  // 각 단계별 진행률을 평균내어 전체 진행률 계산
+  // 각 단계별 진행률 계산
   const stage1Progress = getStageProgress(project, 'stage1');
   const stage2Progress = getStageProgress(project, 'stage2');
   const stage3Progress = getStageProgress(project, 'stage3');
   
   const overallProgress = (stage1Progress + stage2Progress + stage3Progress) / 3;
+  const clampedOverall = Math.max(0, Math.min(100, Math.round(overallProgress)));
   
-  console.log(`📈 [Overall Progress] 전체: ${Math.round(overallProgress)}% (1단계: ${stage1Progress}%, 2단계: ${stage2Progress}%, 3단계: ${stage3Progress}%)`);
+  console.log(`📈 [Overall Progress] 전체: ${clampedOverall}% (1단계: ${stage1Progress}%, 2단계: ${stage2Progress}%, 3단계: ${stage3Progress}%)`);
   
-  return Math.max(0, Math.min(100, Math.round(overallProgress)));
+  return {
+    overall: clampedOverall,
+    stage1: stage1Progress,
+    stage2: stage2Progress,
+    stage3: stage3Progress
+  };
 };
 
-// Calculate progress for individual stage
+// 하위 호환성을 위한 간단한 전체 진행률 함수
+export const getOverallProgress = (project) => {
+  const progress = getProjectProgress(project);
+  return progress.overall || 0;
+};
+
+// Calculate progress for individual stage (날짜 50% + 실행완료 50%)
 export const getStageProgress = (project, stageName) => {
   const stage = project[stageName];
   if (!stage) return 0;
 
-  let totalFields = 0;
-  let completedFields = 0;
-
   const fieldNames = Object.keys(stage);
   
-  // 체크박스 필드 (실행여부 등) - 진행률에 포함
-  const checkboxFields = fieldNames.filter(name => 
-    name.endsWith('Executed') || 
-    ['trainingCompleted', 'manualUploaded', 'techGuideUploaded', 'partsReceived', 'branchOrderEnabled', 'issueResolved'].includes(name)
+  // 날짜 필드들 (실행완료와 쌍을 이루는 것들)
+  const dateFields = fieldNames.filter(name => 
+    name.endsWith('Date') && 
+    name !== 'notes' &&
+    fieldNames.includes(name + 'Executed') // 대응하는 Executed 필드가 있는 경우만
   );
   
-  // 텍스트 필드 - notes(비고) 제외하고 진행률에 포함
-  const textFields = fieldNames.filter(name => 
-    !name.endsWith('Executed') && 
+  // 실행완료 필드들 (날짜와 쌍을 이루는 것들)
+  const executedFields = dateFields.map(dateField => dateField + 'Executed');
+  
+  // 일반 텍스트 필드들 (날짜가 아니고 실행완료도 아닌 것들)
+  const regularFields = fieldNames.filter(name => 
+    !name.endsWith('Date') &&
+    !name.endsWith('Executed') &&
     !['trainingCompleted', 'manualUploaded', 'techGuideUploaded', 'partsReceived', 'branchOrderEnabled', 'issueResolved', 'notes'].includes(name)
   );
   
-  totalFields = textFields.length + checkboxFields.length;
-  
-  // 텍스트 필드 완료 체크 (비고 제외)
-  textFields.forEach(field => {
-    if (stage[field] && stage[field].toString().trim() !== '') {
-      completedFields++;
+  // 기타 체크박스 필드들
+  const otherCheckboxFields = fieldNames.filter(name => 
+    ['trainingCompleted', 'manualUploaded', 'techGuideUploaded', 'partsReceived', 'branchOrderEnabled', 'issueResolved'].includes(name)
+  );
+
+  let totalScore = 0;
+  let achievedScore = 0;
+
+  // 날짜 + 실행완료 쌍 처리 (각각 0.5점씩)
+  dateFields.forEach(dateField => {
+    const executedField = dateField + 'Executed';
+    
+    totalScore += 1.0; // 날짜(0.5) + 실행완료(0.5) = 1.0점
+    
+    // 날짜 입력 완료 시 0.5점
+    if (stage[dateField] && stage[dateField].toString().trim() !== '') {
+      achievedScore += 0.5;
+    }
+    
+    // 실행완료 체크 시 0.5점
+    if (stage[executedField] === true) {
+      achievedScore += 0.5;
     }
   });
   
-  // 체크박스 필드 완료 체크
-  checkboxFields.forEach(field => {
+  // 일반 텍스트 필드들 (각각 1점)
+  regularFields.forEach(field => {
+    totalScore += 1.0;
+    if (stage[field] && stage[field].toString().trim() !== '') {
+      achievedScore += 1.0;
+    }
+  });
+  
+  // 기타 체크박스 필드들 (각각 1점)
+  otherCheckboxFields.forEach(field => {
+    totalScore += 1.0;
     if (stage[field] === true) {
-      completedFields++;
+      achievedScore += 1.0;
     }
   });
 
-  const percentage = totalFields > 0 ? (completedFields / totalFields) * 100 : 0;
+  const percentage = totalScore > 0 ? (achievedScore / totalScore) * 100 : 0;
   const clampedPercentage = Math.max(0, Math.min(100, Math.round(percentage)));
   
-  // 상세 디버그 로깅 (문제 해결을 위해 더 자세히)
-  console.log(`📊 [Progress DEBUG] ${stageName}:`, {
-    totalFields,
-    completedFields,
+  // 상세 디버그 로깅
+  console.log(`📊 [Progress v2] ${stageName}:`, {
+    totalScore: totalScore.toFixed(1),
+    achievedScore: achievedScore.toFixed(1),
     percentage: percentage.toFixed(2),
     clampedPercentage,
-    textFields: { count: textFields.length, fields: textFields },
-    checkboxFields: { count: checkboxFields.length, fields: checkboxFields },
-    stage: stage
+    dateFields: { count: dateFields.length, fields: dateFields },
+    executedFields: { count: executedFields.length, fields: executedFields },
+    regularFields: { count: regularFields.length, fields: regularFields },
+    otherCheckboxFields: { count: otherCheckboxFields.length, fields: otherCheckboxFields }
   });
-  
-  // 비정상 값 감지 및 강제 수정
-  if (percentage > 100 || completedFields > totalFields) {
-    console.error(`🚨 [Progress ERROR] ${stageName}: 비정상 값 감지! completedFields(${completedFields}) > totalFields(${totalFields})`);
-    console.error(`🚨 Stage data:`, stage);
-    console.error(`🚨 Text fields:`, textFields);
-    console.error(`🚨 Checkbox fields:`, checkboxFields);
-    return 0; // 안전장치: 비정상 값인 경우 0% 반환
-  }
   
   return clampedPercentage;
 };

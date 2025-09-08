@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Input } from '../../../components/ui';
+import { getStageProgress } from '../../../types/project';
 
 /**
- * v1.1 Stage3Form - 3단계 양산준비 폼 (최적화됨)
+ * v1.1 Stage3Form - 3단계 서비스준비 폼 (최적화됨)
  * 
  * 주요 개선사항:
  * - 성능 최적화 (불필요한 리렌더링 방지)
@@ -150,31 +151,34 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
       [field]: error
     }));
     
-    // 상위로 변경사항 전달
+    // 상위로 변경사항 전달 - 전체 stage3 데이터 업데이트
     if (onUpdate && mode === 'edit') {
-      onUpdate('stage3', field, value);
+      const updatedStage3Data = {
+        ...stage3Data,
+        [field]: value
+      };
+      onUpdate(updatedStage3Data);
     }
-  }, [formFields, validateField, onUpdate, mode]);
+  }, [formFields, validateField, onUpdate, mode, stage3Data]);
 
   // 체크박스 업데이트 핸들러
   const handleExecutedChange = useCallback((field, checked) => {
     console.log(`✅ [v1.1] Stage3Form executed updated: ${field} = ${checked}`);
     
     if (onUpdate && mode === 'edit') {
-      onUpdate('stage3', field, checked);
+      const updatedStage3Data = {
+        ...stage3Data,
+        [field]: checked
+      };
+      onUpdate(updatedStage3Data);
     }
-  }, [onUpdate, mode]);
+  }, [onUpdate, mode, stage3Data]);
 
-  // 진행률 계산
-  const completedFields = useMemo(() => {
-    return formFields.filter(field => {
-      const value = stage3Data[field.key];
-      return value && value.toString().trim() !== '';
-    }).length;
-  }, [formFields, stage3Data]);
-
-  const totalFields = formFields.length;
-  const progressPercentage = Math.round((completedFields / totalFields) * 100);
+  // 진행률 계산 (표준화된 함수 사용)
+  const progressPercentage = useMemo(() => {
+    if (!project) return 0;
+    return getStageProgress(project, 'stage3');
+  }, [project]);
 
   // 읽기 전용 모드 렌더링
   if (mode === 'view') {
@@ -183,10 +187,10 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
             <div className="w-3 h-3 bg-purple-500 rounded-full mr-3"></div>
-            <h3 className="text-xl font-semibold text-purple-600">3차 단계 - 양산 준비</h3>
+            <h3 className="text-xl font-semibold text-purple-600">3단계 - 서비스 준비</h3>
           </div>
           <div className="text-sm text-gray-600">
-            진행률: {progressPercentage}% ({completedFields}/{totalFields})
+            진행률: {progressPercentage}%
           </div>
         </div>
         
@@ -243,12 +247,11 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
           <div className="w-3 h-3 bg-purple-500 rounded-full mr-3"></div>
-          <h3 className="text-xl font-semibold text-purple-600">3차 단계 - 양산 준비</h3>
+          <h3 className="text-xl font-semibold text-purple-600">3단계 - 서비스 준비</h3>
         </div>
         <div className="flex items-center space-x-4">
           <div className="text-sm text-gray-600">
-            진행률: <span className="font-medium text-purple-600">{progressPercentage}%</span> 
-            <span className="text-gray-400"> ({completedFields}/{totalFields})</span>
+            진행률: <span className="font-medium text-purple-600">{progressPercentage}%</span>
           </div>
           {/* 진행률 바 */}
           <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -327,13 +330,13 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
             value={stage3Data.notes || ''}
             onChange={(e) => handleFieldChange('notes', e.target.value)}
             rows={6}
-            placeholder="3단계 양산준비 관련 메모를 작성하세요. 예: BOM 구성 세부사항, 부품 발주 계획, A/S 체계 구축 계획 등..."
+            placeholder="3단계 서비스준비 관련 메모를 작성하세요. 예: BOM 구성 세부사항, 부품 발주 계획, A/S 체계 구축 계획 등..."
             className="w-full px-4 py-3 border-0 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none text-sm leading-relaxed"
             disabled={mode === 'view'}
           />
           <div className="mt-2 text-xs text-gray-500 flex items-center space-x-2">
             <span>🏭</span>
-            <span>팁: 양산 준비의 세부 계획과 진행 상황을 상세히 기록하세요</span>
+            <span>팁: 서비스 준비의 세부 계획과 진행 상황을 상세히 기록하세요</span>
           </div>
         </div>
       </div>

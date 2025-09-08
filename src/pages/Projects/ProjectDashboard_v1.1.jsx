@@ -19,7 +19,7 @@ const ProjectDashboard_v11 = ({ type = 'project' }) => {
   console.log('📊 [v1.1] ProjectDashboard rendering', { type });
 
   const { state, setCurrentView, setSelectedProject } = useProjectStore();
-  const { projects, selectedProject, ui } = state;
+  const { projects = [], selectedProject = null, ui = {} } = state || {};
   const [activeTab, setActiveTab] = useState('overview');
 
   // 메인 대시보드 (전체 프로젝트) vs 개별 프로젝트 대시보드 구분

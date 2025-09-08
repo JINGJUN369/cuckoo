@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useAuth } from '../../hooks/useAuth_v1.1';
+import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
 import { useProjectStore } from '../../hooks/useProjectStore_v1.1';
 import { getNotificationTargets } from '../../utils/dDayCalculator_v1.1';
 import DDayBadge from './DDayBadge_v1.1';
@@ -24,9 +24,8 @@ const NotificationSystem_v11 = ({
 }) => {
   console.log('🔔 [v1.1] NotificationSystem rendering');
 
-  const { user } = useAuth();
-  const { state } = useProjectStore();
-  const { projects = [] } = state;
+  const { user, profile } = useSupabaseAuth();
+  const { projects = [] } = useProjectStore();
   
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);

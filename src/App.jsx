@@ -1,20 +1,13 @@
 import React from 'react';
-import AuthenticatedApp_v11 from './AuthenticatedApp_v1.1';
-import { ToastProvider } from './components/ui/Toast';
+import App_v1_2 from './App_v1.2';
 
 /**
- * v1.1 App - 새로운 아키텍처 적용
+ * App - v1.2 버전 사용 (Supabase 전용)
  */
 function App() {
-  console.log('🏁 [v1.1] App component starting...');
+  console.log('🏁 App component starting - v1.2 Supabase mode');
   
-  return (
-    <ToastProvider>
-      <div className="App" data-version="v1.1">
-        <AuthenticatedApp_v11 />
-      </div>
-    </ToastProvider>
-  );
+  return <App_v1_2 />;
 }
 
 export default App;

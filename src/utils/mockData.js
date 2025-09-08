@@ -17,7 +17,7 @@ export const getMockProjects = () => [
       massProductionDate: '2024-11-15',
       launchDateExecuted: false,
       massProductionDateExecuted: false,
-      notes: '신규 냉매 적용'
+      notes: ''
     },
     stage2: {
       pilotProductionDate: '2024-10-01',
@@ -32,7 +32,7 @@ export const getMockProjects = () => [
       trainingDateExecuted: false,
       userManualUploaded: true,
       techManualUploaded: false,
-      notes: '기술 이전 완료'
+      notes: ''
     },
     stage3: {
       firstPartsOrderDate: '2024-11-10',
@@ -48,7 +48,7 @@ export const getMockProjects = () => [
       priceRegistrationDateExecuted: false,
       partsReceiptDateExecuted: false,
       branchOrderGuideDateExecuted: false,
-      notes: '부품 조달 지연 해결'
+      notes: ''
     }
   }),
   createProject({
@@ -67,7 +67,7 @@ export const getMockProjects = () => [
       massProductionDate: '2025-01-01',
       launchDateExecuted: false,
       massProductionDateExecuted: false,
-      notes: '직수형 정수기'
+      notes: ''
     },
     stage2: {
       pilotProductionDate: '2024-11-15',
@@ -82,7 +82,7 @@ export const getMockProjects = () => [
       trainingDateExecuted: false,
       userManualUploaded: false,
       techManualUploaded: false,
-      notes: '필터 기술 검토 중'
+      notes: ''
     },
     stage3: {
       firstPartsOrderDate: '',
@@ -117,7 +117,7 @@ export const getMockProjects = () => [
       massProductionDate: '2024-09-15',
       launchDateExecuted: true,
       massProductionDateExecuted: true,
-      notes: 'HDR 기술 적용 완료'
+      notes: ''
     },
     stage2: {
       pilotProductionDate: '2024-08-01',
@@ -132,7 +132,7 @@ export const getMockProjects = () => [
       trainingDateExecuted: true,
       userManualUploaded: true,
       techManualUploaded: true,
-      notes: '모든 단계 완료'
+      notes: ''
     },
     stage3: {
       firstPartsOrderDate: '2024-09-05',
@@ -148,7 +148,7 @@ export const getMockProjects = () => [
       priceRegistrationDateExecuted: true,
       partsReceiptDateExecuted: true,
       branchOrderGuideDateExecuted: true,
-      notes: '성공적 출시 완료'
+      notes: ''
     }
   })
 ];

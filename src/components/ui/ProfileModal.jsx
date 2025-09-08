@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../hooks/useAuth_v1.1';
+import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
 import PasswordChangeModal from './PasswordChangeModal';
 
 const ProfileModal = ({ isOpen, onClose }) => {
-  const { user, logout } = useAuth();
+  const { user, profile, signOut } = useSupabaseAuth();
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    name: user?.name || '',
-    team: user?.team || '',
-    email: user?.email || ''
+    name: profile?.name || '',
+    team: profile?.team || '',
+    email: profile?.email || user?.email || ''
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -51,48 +51,31 @@ const ProfileModal = ({ isOpen, onClose }) => {
     setIsLoading(true);
 
     try {
-      // 사용자 정보 업데이트 로직
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      const userIndex = users.findIndex(u => u.id === user.id);
+      // Supabase를 통한 프로필 정보 업데이트
+      const { supabase } = await import('../../lib/supabase');
       
-      if (userIndex !== -1) {
-        users[userIndex] = {
-          ...users[userIndex],
+      const { error } = await supabase
+        .from('profiles')
+        .update({
           name: formData.name,
           team: formData.team,
           email: formData.email,
-          updatedAt: new Date().toISOString()
-        };
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
         
-        localStorage.setItem('users', JSON.stringify(users));
-        localStorage.setItem('currentUser', JSON.stringify(users[userIndex]));
-        
-        // 활동 로그 기록
-        const activityLogs = JSON.parse(localStorage.getItem('activityLogs') || '[]');
-        activityLogs.push({
-          id: Date.now().toString(),
-          userId: user.id,
-          action: 'PROFILE_UPDATED',
-          description: '프로필 정보 업데이트',
-          timestamp: new Date().toISOString(),
-          ip: 'localhost',
-          userAgent: navigator.userAgent,
-          sessionId: 'current',
-          metadata: { changes: formData },
-          severity: 'LOW'
-        });
-        localStorage.setItem('activityLogs', JSON.stringify(activityLogs));
-        
-        setIsEditing(false);
-        setErrors({});
-        
-        // 성공 메시지
-        alert('프로필이 성공적으로 업데이트되었습니다.');
-        
-        // 페이지 새로고침으로 업데이트된 정보 반영
-        window.location.reload();
-      }
+      setIsEditing(false);
+      setErrors({});
+      
+      // 성공 메시지
+      alert('프로필이 성공적으로 업데이트되었습니다.');
+      
+      // 프로필 다시 로드를 위해 페이지 새로고침
+      window.location.reload();
     } catch (error) {
+      console.error('프로필 업데이트 오류:', error);
       setErrors({ submit: '프로필 업데이트에 실패했습니다.' });
     }
 
@@ -101,9 +84,9 @@ const ProfileModal = ({ isOpen, onClose }) => {
 
   const handleCancelEdit = () => {
     setFormData({
-      name: user?.name || '',
-      team: user?.team || '',
-      email: user?.email || ''
+      name: profile?.name || '',
+      team: profile?.team || '',
+      email: profile?.email || user?.email || ''
     });
     setIsEditing(false);
     setErrors({});
@@ -142,11 +125,11 @@ const ProfileModal = ({ isOpen, onClose }) => {
             <div className="text-center">
               <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-white">
-                  {user?.name?.charAt(0) || 'U'}
+                  {profile?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                 </span>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">{user?.name}</h3>
-              <p className="text-sm text-gray-600">{user?.team}</p>
+              <h3 className="text-lg font-semibold text-gray-900">{profile?.name || '사용자'}</h3>
+              <p className="text-sm text-gray-600">{profile?.team || '팀 없음'}</p>
             </div>
 
             {/* 기본 정보 */}
@@ -156,7 +139,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
                   사번
                 </label>
                 <div className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-600">
-                  {user?.id}
+                  {profile?.id || user?.id}
                 </div>
               </div>
 
@@ -176,7 +159,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
                   />
                 ) : (
                   <div className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900">
-                    {user?.name}
+                    {profile?.name}
                   </div>
                 )}
                 {errors.name && (
@@ -200,7 +183,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
                   />
                 ) : (
                   <div className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900">
-                    {user?.team}
+                    {profile?.team}
                   </div>
                 )}
                 {errors.team && (
@@ -224,7 +207,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
                   />
                 ) : (
                   <div className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900">
-                    {user?.email}
+                    {profile?.email || user?.email}
                   </div>
                 )}
                 {errors.email && (
@@ -237,7 +220,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
                   가입일
                 </label>
                 <div className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-600">
-                  {formatDate(user?.registeredAt || user?.createdAt)}
+                  {formatDate(profile?.registered_at || profile?.created_at)}
                 </div>
               </div>
 
@@ -246,9 +229,9 @@ const ProfileModal = ({ isOpen, onClose }) => {
                   권한
                 </label>
                 <div className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-600">
-                  {user?.role === 'admin' ? '관리자' : 
-                   user?.role === 'manager' ? '매니저' : 
-                   user?.role === 'user' ? '일반 사용자' : '뷰어'}
+                  {profile?.role === 'admin' ? '관리자' : 
+                   profile?.role === 'manager' ? '매니저' : 
+                   profile?.role === 'user' ? '일반 사용자' : '뷰어'}
                 </div>
               </div>
             </div>
@@ -296,7 +279,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
               </button>
 
               <button
-                onClick={logout}
+                onClick={signOut}
                 className="w-full bg-red-50 text-red-700 py-2 px-4 rounded-lg hover:bg-red-100 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
               >
                 로그아웃

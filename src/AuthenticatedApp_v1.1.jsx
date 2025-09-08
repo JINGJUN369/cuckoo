@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { AuthProvider_v11 as AuthProvider, useAuth } from './hooks/useAuth_v1.1';
+import { useSupabaseAuth } from './hooks/useSupabaseAuth';
 import LoginPage from './pages/Auth/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
 import ResetPasswordPage from './pages/Auth/ResetPasswordPage';
-import AdminPage from './pages/Admin/AdminPage';
+import AdminDashboard_v11 from './pages/Admin/AdminDashboard_v1.1';
 import { ProjectProvider } from './hooks/useProjectStore_v1.1';
 import AppRouter from './AppRouter';
 import { BrandHeader } from './components/ui';
@@ -21,20 +21,20 @@ import PasswordChangeModal from './components/ui/PasswordChangeModal';
 
 // 인증된 앱의 메인 콘텐츠
 const MainContent = () => {
-  const { user, logout, isLoading } = useAuth();
+  const { user, profile, loading, signOut, mustChangePassword } = useSupabaseAuth();
   const [currentPage, setCurrentPage] = useState('projects'); // 'projects', 'admin'
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
-  console.log(`🔐 [v1.1] MainContent - user:`, user?.id, 'isLoading:', isLoading, 'mustChangePassword:', user?.mustChangePassword);
+  console.log(`🔐 [v1.1] MainContent - user:`, user?.id, 'email:', user?.email, 'loading:', loading, 'mustChangePassword:', mustChangePassword, 'profile:', profile?.name);
 
   // 비밀번호 변경 모달 자동 표시
   React.useEffect(() => {
-    if (user && user.mustChangePassword && !showPasswordModal) {
+    if (user && mustChangePassword && !showPasswordModal) {
       setShowPasswordModal(true);
     }
-  }, [user, showPasswordModal]);
+  }, [user, mustChangePassword, showPasswordModal]);
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -53,13 +53,13 @@ const MainContent = () => {
   // 관리자 권한 확인
   const isAdmin = user && (user.id === 'admin' || user.team === '관리팀' || user.id === '10001');
   
-  console.log(`🏠 [v1.1] Authenticated user:`, user.id, 'isAdmin:', isAdmin, 'currentPage:', currentPage);
+  console.log(`🏠 [v1.1] Authenticated user:`, user?.id, 'isAdmin:', profile?.role === 'admin', 'currentPage:', currentPage);
 
   const handlePasswordChangeClose = () => {
-    if (user?.mustChangePassword) {
+    if (mustChangePassword) {
       const confirm = window.confirm('비밀번호 변경은 필수입니다. 로그아웃하시겠습니까?');
       if (confirm) {
-        logout();
+        signOut();
       }
     } else {
       setShowPasswordModal(false);
@@ -68,17 +68,7 @@ const MainContent = () => {
 
   const handlePasswordChangeSuccess = () => {
     setShowPasswordModal(false);
-    // 사용자 정보 업데이트 (mustChangePassword를 false로 설정)
-    if (user) {
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      const userIndex = users.findIndex(u => u.id === user.id);
-      if (userIndex !== -1) {
-        users[userIndex].mustChangePassword = false;
-        localStorage.setItem('users', JSON.stringify(users));
-        localStorage.setItem('currentUser', JSON.stringify(users[userIndex]));
-      }
-    }
-    window.location.reload(); // 업데이트된 정보로 새로고침
+    // 비밀번호 변경이 완료되면 프로필의 must_change_password 플래그가 자동으로 업데이트됨
   };
 
   return (
@@ -92,12 +82,12 @@ const MainContent = () => {
           {currentPage === 'projects' && (
             <AppRouter />
           )}
-          {currentPage === 'admin' && isAdmin && (
+          {currentPage === 'admin' && (profile?.role === 'admin' || profile?.team === '관리팀') && (
             <div className="container mx-auto px-4 py-6">
-              <AdminPage />
+              <AdminDashboard_v11 />
             </div>
           )}
-          {currentPage === 'admin' && !isAdmin && (
+          {currentPage === 'admin' && !(profile?.role === 'admin' || profile?.team === '관리팀') && (
             <div className="min-h-screen flex items-center justify-center">
               <div className="text-center">
                 <h2 className="text-xl font-bold text-red-600 mb-2">접근 권한 없음</h2>
@@ -117,7 +107,7 @@ const MainContent = () => {
         <PasswordChangeModal
           isOpen={showPasswordModal}
           onClose={handlePasswordChangeClose}
-          isRequired={user?.mustChangePassword}
+          isRequired={mustChangePassword}
           onSuccess={handlePasswordChangeSuccess}
         />
       </div>
@@ -188,13 +178,9 @@ window.debugAppState = () => {
 
 // 최상위 앱 컴포넌트
 const AuthenticatedApp_v11 = () => {
-  console.log(`🚀 [v1.1] AuthenticatedApp initializing...`);
+  console.log(`🚀 [v1.1] AuthenticatedApp initializing with Supabase...`);
   
-  return (
-    <AuthProvider>
-      <MainContent />
-    </AuthProvider>
-  );
+  return <MainContent />;
 };
 
 export default AuthenticatedApp_v11;

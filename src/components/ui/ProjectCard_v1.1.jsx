@@ -18,8 +18,11 @@ const ProjectCard_v11 = ({
   onEdit, 
   onView, 
   onComplete,
+  onDelete,
+  onArchive,
   mode = 'grid', // 'list', 'grid', 'compact'
   showActions = false,
+  isAdmin = false,
   className = ''
 }) => {
   console.log(`🃏 [v1.1] ProjectCard rendering: ${project?.name}`);
@@ -27,12 +30,13 @@ const ProjectCard_v11 = ({
   // 진행률 계산 (메모이제이션) - 강제 재계산 포함
   const progress = useMemo(() => {
     const clampProgress = (value) => Math.max(0, Math.min(100, value || 0));
+    const projectProgress = getProjectProgress(project);
     
     const progressData = {
-      overall: clampProgress(getProjectProgress(project)),
-      stage1: clampProgress(getStageProgress(project, 'stage1')),
-      stage2: clampProgress(getStageProgress(project, 'stage2')),
-      stage3: clampProgress(getStageProgress(project, 'stage3'))
+      overall: clampProgress(projectProgress.overall),
+      stage1: clampProgress(projectProgress.stage1),
+      stage2: clampProgress(projectProgress.stage2),
+      stage3: clampProgress(projectProgress.stage3)
     };
     
     console.log(`🔄 [ProjectCard] ${project?.name} 진행률:`, progressData);
@@ -124,6 +128,20 @@ const ProjectCard_v11 = ({
     e.stopPropagation();
     onComplete?.(project);
   }, [onComplete, project]);
+
+  const handleDelete = useCallback((e) => {
+    e.stopPropagation();
+    if (window.confirm(`정말로 "${project.name}" 프로젝트를 삭제하시겠습니까?\n\n⚠️ 이 작업은 되돌릴 수 없습니다.`)) {
+      onDelete?.(project);
+    }
+  }, [onDelete, project]);
+
+  const handleArchive = useCallback((e) => {
+    e.stopPropagation();
+    if (window.confirm(`"${project.name}" 프로젝트를 완료 처리하시겠습니까?\n\n완료된 프로젝트는 완료 프로젝트 목록으로 이동됩니다.`)) {
+      onArchive?.(project);
+    }
+  }, [onArchive, project]);
 
   // 미니 진행률 바 컴포넌트
   const MiniProgressBar = ({ value, label }) => (
@@ -268,6 +286,32 @@ const ProjectCard_v11 = ({
               >
                 완료
               </Button>
+            )}
+            
+            {/* 관리자 전용 버튼들 */}
+            {isAdmin && (
+              <>
+                {onArchive && (
+                  <Button
+                    onClick={handleArchive}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs text-blue-600 border-blue-200 hover:bg-blue-50"
+                  >
+                    종료
+                  </Button>
+                )}
+                {onDelete && (
+                  <Button
+                    onClick={handleDelete}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs text-red-600 border-red-200 hover:bg-red-50"
+                  >
+                    삭제
+                  </Button>
+                )}
+              </>
             )}
           </div>
         )}

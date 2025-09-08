@@ -19,8 +19,7 @@ import { exportProjectsToExcel } from '../../utils/excelExport';
 const ProjectList_v11 = () => {
   console.log('🗂️ [v1.1] ProjectList rendering');
 
-  const { state, setCurrentView, setSelectedProject, addProject } = useProjectStore();
-  const { projects, ui, opinions } = state;
+  const { projects, ui, opinions, setCurrentView, setSelectedProject, createProject, resetLoadingState } = useProjectStore();
 
   // Local state
   const [searchTerm, setSearchTerm] = useState('');
@@ -126,16 +125,33 @@ const ProjectList_v11 = () => {
   }, [projects, searchLower, searchTerm, sortBy, filterStatus, calculateDDay]);
 
   // 새 프로젝트 생성 핸들러
-  const handleNewProject = useCallback((newProject) => {
+  const handleNewProject = useCallback(async (newProject) => {
     console.log('➕ [v1.1] ProjectList: Creating new project', newProject);
     
-    addProject(newProject);
-    setShowNewProjectModal(false);
-    
-    // 새 프로젝트를 선택하고 상세 페이지로 이동
-    setSelectedProject(newProject);
-    setCurrentView('detail');
-  }, [addProject, setSelectedProject, setCurrentView]);
+    try {
+      const createdProject = await createProject(newProject);
+      if (createdProject) {
+        setShowNewProjectModal(false);
+        
+        // 새 프로젝트를 선택하고 상세 페이지로 이동
+        setSelectedProject(createdProject);
+        setCurrentView('detail');
+        return createdProject;
+      } else {
+        // 프로젝트 생성 실패 시 로딩 상태 강제 초기화
+        resetLoadingState();
+        setShowNewProjectModal(false);
+        console.error('프로젝트 생성에 실패했습니다.');
+        throw new Error('프로젝트 생성에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('프로젝트 생성 중 오류:', error);
+      // 오류 발생 시 로딩 상태 강제 초기화
+      resetLoadingState();
+      setShowNewProjectModal(false);
+      throw error; // NewProjectModal에서 에러를 처리할 수 있도록 throw
+    }
+  }, [createProject, setSelectedProject, setCurrentView, resetLoadingState]);
 
   // 프로젝트 선택 핸들러
   const handleProjectSelect = useCallback((project) => {
@@ -484,6 +500,7 @@ const ProjectList_v11 = () => {
         isOpen={showNewProjectModal}
         onClose={() => setShowNewProjectModal(false)}
         onSubmit={handleNewProject}
+        resetLoadingState={resetLoadingState}
       />
     </div>
   );

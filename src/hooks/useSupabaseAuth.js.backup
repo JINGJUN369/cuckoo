@@ -1,0 +1,326 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+
+export const useSupabaseAuth = () => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(false); // 임시로 false 시작
+  const [profile, setProfile] = useState(null);
+
+  // 사용자 세션 확인
+  useEffect(() => {
+    // 타임아웃 안전장치: 3초 후 강제로 로딩 해제
+    const timeoutId = setTimeout(() => {
+      console.warn('⚠️ 인증 초기화가 3초를 초과했습니다. 강제로 로딩을 해제합니다.');
+      setLoading(false);
+      setUser(null); // 타임아웃 시 user도 null로 설정
+    }, 3000);
+    // 현재 세션 가져오기
+    const getSession = async () => {
+      console.log('🔐 세션 초기화 시작...');
+      
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        console.log('🔐 Supabase 세션 결과:', { 
+          hasSession: !!session, 
+          hasUser: !!session?.user, 
+          email: session?.user?.email,
+          error: error?.message 
+        });
+        
+        if (error) {
+          console.error('❌ Supabase 세션 가져오기 실패:', error);
+          setUser(null);
+          setLoading(false);
+          clearTimeout(timeoutId);
+          return;
+        }
+        
+        setUser(session?.user || null);
+        
+        if (session?.user) {
+          console.log('👤 사용자 세션 확인됨. 프로필 로딩 시작...');
+          try {
+            await fetchProfile(session.user.id);
+            console.log('✅ 프로필 로딩 완료');
+          } catch (profileError) {
+            console.error('❌ 프로필 로딩 실패:', profileError);
+            // 프로필 로딩 실패해도 로딩은 완료
+          }
+        } else {
+          console.log('🚪 세션이 없음 - 로그인 필요');
+        }
+        
+        console.log('✅ 세션 초기화 완료');
+        setLoading(false);
+        clearTimeout(timeoutId); // 성공 시 타임아웃 해제
+      } catch (error) {
+        console.error('❌ 세션 초기화 중 치명적 오류:', error);
+        setUser(null);
+        setLoading(false);
+        clearTimeout(timeoutId); // 에러 시에도 타임아웃 해제
+      }
+    };
+
+    getSession();
+
+    // 인증 상태 변경 리스너
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('🔐 Auth state changed:', event, 'user:', session?.user?.email, 'session exists:', !!session);
+        
+        setUser(session?.user || null);
+        
+        if (session?.user && event === 'SIGNED_IN') {
+          console.log('✅ 로그인 성공, 프로필 로딩 중...');
+          try {
+            await fetchProfile(session.user.id);
+            console.log('✅ 프로필 로딩 완료');
+          } catch (profileError) {
+            console.error('❌ 인증 상태 변경 시 프로필 로딩 실패:', profileError);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          console.log('🚪 로그아웃 처리');
+          setProfile(null);
+        } else {
+          console.log('🔄 기타 인증 상태 변경:', event);
+          setProfile(null);
+        }
+        
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeoutId); // 컴포넌트 언마운트 시 타임아웃 정리
+    };
+  }, []);
+
+  // 프로필 가져오기
+  const fetchProfile = async (userId) => {
+    console.log('👤 프로필 로딩 시작 for userId:', userId);
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      console.log('👤 프로필 쿼리 결과:', { data, error });
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 = row not found
+        console.error('❌ 프로필 가져오기 오류:', error);
+        
+        // 테이블이 존재하지 않는 경우 또는 기타 오류 시 기본 프로필 설정
+        console.warn('⚠️ 프로필 로딩 실패. 기본 프로필을 사용합니다.');
+        const defaultProfile = {
+          id: userId,
+          role: 'user',
+          name: 'User',
+          email: '',
+          team: '일반팀'
+        };
+        console.log('🔧 기본 프로필 설정:', defaultProfile);
+        setProfile(defaultProfile);
+        return;
+      }
+
+      if (data) {
+        console.log('✅ 프로필 로딩 성공:', data);
+        setProfile(data);
+      } else {
+        console.warn('⚠️ 프로필 데이터가 비어있음. 기본 프로필 사용');
+        const defaultProfile = {
+          id: userId,
+          role: 'user',
+          name: 'User',
+          email: '',
+          team: '일반팀'
+        };
+        setProfile(defaultProfile);
+      }
+    } catch (error) {
+      console.error('❌ 프로필 fetch 치명적 에러:', error);
+      // 심각한 오류 발생 시에도 기본 프로필 설정
+      const defaultProfile = {
+        id: userId,
+        role: 'user', 
+        name: 'User',
+        email: '',
+        team: '일반팀'
+      };
+      console.log('🔧 에러 후 기본 프로필 설정:', defaultProfile);
+      setProfile(defaultProfile);
+    }
+  };
+
+  // 회원가입
+  const signUp = async (email, password, name, team) => {
+    try {
+      setLoading(true);
+      
+      // 1. Supabase Auth에 사용자 생성
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+            team
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      // 2. 프로필 테이블에 추가 정보 저장
+      if (data.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([{
+            id: data.user.id,
+            name,
+            team,
+            email,
+            role: 'user',
+            registered_at: new Date().toISOString()
+          }]);
+
+        if (profileError) {
+          console.error('프로필 생성 오류:', profileError);
+        }
+      }
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('회원가입 오류:', error);
+      return { data: null, error };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 로그인
+  const signIn = async (email, password) => {
+    try {
+      console.log('🔑 로그인 시도:', email);
+      setLoading(true);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        console.error('❌ 로그인 실패:', error);
+        throw error;
+      }
+      
+      console.log('✅ Supabase 로그인 성공:', data?.user?.email);
+      return { data, error: null };
+    } catch (error) {
+      console.error('❌ 로그인 오류:', error);
+      return { data: null, error };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 로그아웃
+  const signOut = async () => {
+    try {
+      setLoading(true);
+      
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      setUser(null);
+      setProfile(null);
+      
+      return { error: null };
+    } catch (error) {
+      console.error('로그아웃 오류:', error);
+      return { error };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 비밀번호 변경
+  const updatePassword = async (newPassword) => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) throw error;
+      
+      // must_change_password 플래그 제거
+      if (profile) {
+        await supabase
+          .from('profiles')
+          .update({ must_change_password: false })
+          .eq('id', user.id);
+      }
+      
+      return { error: null };
+    } catch (error) {
+      console.error('비밀번호 변경 오류:', error);
+      return { error };
+    }
+  };
+
+  // 프로필 업데이트
+  const updateProfile = async (updates) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id);
+
+      if (error) throw error;
+      
+      // 로컬 상태 업데이트
+      setProfile(prev => ({ ...prev, ...updates }));
+      
+      return { error: null };
+    } catch (error) {
+      console.error('프로필 업데이트 오류:', error);
+      return { error };
+    }
+  };
+
+  // 비밀번호 재설정 요청 (Supabase Auth 사용)
+  const requestPasswordReset = async (email) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) throw error;
+      
+      return { success: true };
+    } catch (error) {
+      console.error('비밀번호 재설정 요청 오류:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  return {
+    user,
+    profile,
+    loading,
+    signUp,
+    signIn,
+    signOut,
+    updatePassword,
+    updateProfile,
+    requestPasswordReset,
+    // 기존 useAuth와 호환성을 위한 별칭들
+    isAuthenticated: !!user,
+    isAdmin: profile?.role === 'admin',
+    mustChangePassword: profile?.must_change_password || false
+  };
+};

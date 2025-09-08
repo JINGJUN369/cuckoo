@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useProjectStore } from '../../hooks/useProjectStore_v1.1';
 import { getProjectProgress } from '../../types/project';
 import { Button } from '../../components/ui';
@@ -6,7 +6,7 @@ import Stage1Form_v11 from './components/Stage1Form_v1.1';
 import Stage2Form_v11 from './components/Stage2Form_v1.1';
 import Stage3Form_v11 from './components/Stage3Form_v1.1';
 import ProjectProgress from './components/ProjectProgress';
-import OpinionForm from './components/OpinionForm';
+import OpinionForm_v11 from './components/OpinionForm_v1.1';
 import OpinionList from './components/OpinionList';
 
 /**
@@ -20,7 +20,7 @@ import OpinionList from './components/OpinionList';
  * - 편집 모드로의 명확한 전환
  */
 const ProjectDetail_v11 = () => {
-  const { state, setCurrentView, addOpinion, updateOpinion, moveToCompleted } = useProjectStore();
+  const { selectedProject, opinions, setCurrentView, completeProject, addOpinion, updateOpinion } = useProjectStore();
   
   // 현재 사용자 정보 (v1.1 개선)
   const getCurrentUser = useCallback(() => {
@@ -34,7 +34,6 @@ const ProjectDetail_v11 = () => {
   }, []);
   
   const user = getCurrentUser();
-  const { selectedProject, opinions } = state;
   
   console.log(`👁️ [v1.1] ProjectDetail rendered with selectedProject: ${selectedProject?.name || 'None'}`);
   
@@ -70,45 +69,71 @@ const ProjectDetail_v11 = () => {
   const overallProgress = useMemo(() => getProjectProgress(selectedProject), [selectedProject]);
 
   // 프로젝트 관련 의견들 필터링
+  // v1.1: localStorage 기반이므로 의견은 이미 로드됨 - loadOpinions 불필요
+
   const projectOpinions = useMemo(() => 
-    opinions.filter(opinion => opinion.projectId === selectedProject.id), 
-    [opinions, selectedProject.id]
+    opinions.filter(opinion => opinion.project_id === selectedProject?.id), 
+    [opinions, selectedProject?.id]
   );
 
   // 의견 제출 핸들러
-  const handleOpinionSubmit = useCallback((opinion) => {
-    addOpinion(opinion);
-    setShowOpinionForm(false);
+  const handleOpinionSubmit = useCallback(async (opinion) => {
+    if (!selectedProject) return;
     
-    // 성공 알림
-    const notification = document.createElement('div');
-    notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
-    notification.textContent = '💬 의견이 등록되었습니다!';
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-      document.body.removeChild(notification);
-    }, 3000);
-  }, [addOpinion]);
+    try {
+      const result = await addOpinion({
+        project_id: selectedProject.id,
+        content: opinion.content,
+        stage: opinion.stage,
+        priority: opinion.priority || 'medium',
+        status: 'open'
+      });
+      
+      if (result) {
+        setShowOpinionForm(false);
+        console.log('✅ 의견이 성공적으로 추가되었습니다');
+      }
+      return result;
+    } catch (error) {
+      console.error('❌ 의견 추가 실패:', error);
+      throw error; // OpinionForm에서 에러를 처리할 수 있도록 throw
+    }
+  }, [selectedProject, addOpinion]);
 
   // 의견 상태 업데이트 핸들러
-  const handleOpinionStatusUpdate = useCallback((opinionId, newStatus) => {
-    updateOpinion(opinionId, { status: newStatus });
+  const handleOpinionStatusUpdate = useCallback(async (opinionId, newStatus) => {
+    try {
+      await updateOpinion(opinionId, { status: newStatus });
+      console.log('✅ 의견 상태가 업데이트되었습니다');
+    } catch (error) {
+      console.error('❌ 의견 상태 업데이트 실패:', error);
+    }
   }, [updateOpinion]);
 
   // 의견 답글 핸들러
-  const handleOpinionReply = useCallback((opinion) => {
-    const reply = window.prompt('답변을 입력하세요:');
-    if (reply && reply.trim()) {
-      updateOpinion(opinion.id, {
-        reply: {
-          content: reply.trim(),
-          createdAt: new Date().toISOString(),
-          author: user?.name || '관리자'
-        }
+  const handleOpinionReply = useCallback(async (opinionId, replyContent) => {
+    try {
+      // 기존 의견을 가져와서 답글을 추가
+      const existingOpinion = opinions.find(op => op.id === opinionId);
+      if (!existingOpinion) return;
+
+      const currentReplies = existingOpinion.reply || [];
+      const newReply = {
+        id: Date.now().toString(),
+        content: replyContent,
+        created_at: new Date().toISOString(),
+        created_by: user?.id || 'unknown'
+      };
+
+      await updateOpinion(opinionId, { 
+        reply: [...currentReplies, newReply] 
       });
+      
+      console.log('✅ 답글이 성공적으로 추가되었습니다');
+    } catch (error) {
+      console.error('❌ 답글 추가 실패:', error);
     }
-  }, [updateOpinion, user]);
+  }, [opinions, updateOpinion, user]);
 
   // 프로젝트 완료 처리
   const handleCompleteProject = useCallback(() => {
@@ -120,7 +145,7 @@ const ProjectDetail_v11 = () => {
     
     if (window.confirm(`"${selectedProject.name}" 프로젝트를 완료 처리하시겠습니까?\n\n완료된 프로젝트는 "완료된 프로젝트" 페이지에서 관리됩니다.`)) {
       try {
-        moveToCompleted(selectedProject.id);
+        completeProject(selectedProject.id);
         
         // 성공 알림
         const notification = document.createElement('div');
@@ -137,7 +162,7 @@ const ProjectDetail_v11 = () => {
         alert('프로젝트 완료 처리 중 오류가 발생했습니다.');
       }
     }
-  }, [selectedProject, overallProgress, moveToCompleted, setCurrentView]);
+  }, [selectedProject, overallProgress, completeProject, setCurrentView]);
 
   // D-Day 계산
   const dDay = useMemo(() => {
@@ -398,9 +423,9 @@ const ProjectDetail_v11 = () => {
 
           {/* Opinion Form */}
           {showOpinionForm && (
-            <OpinionForm
+            <OpinionForm_v11
               projectId={selectedProject.id}
-              stage={`stage${currentStage}`}
+              stage={currentStage}
               onSubmit={handleOpinionSubmit}
               onClose={() => setShowOpinionForm(false)}
             />

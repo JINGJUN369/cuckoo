@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../hooks/useAuth_v1.1';
+import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
+import { supabase } from '../../lib/supabase';
 
 const PasswordChangeModal = ({ isOpen, onClose, isRequired = false, onSuccess }) => {
-  const { changePassword, user } = useAuth();
+  const { user } = useSupabaseAuth();
   const [formData, setFormData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -55,7 +56,12 @@ const PasswordChangeModal = ({ isOpen, onClose, isRequired = false, onSuccess })
     
     setIsLoading(true);
     
-    const result = await changePassword(formData.currentPassword, formData.newPassword);
+    // Supabase를 통한 비밀번호 변경
+    const { error } = await supabase.auth.updateUser({
+      password: formData.newPassword
+    });
+    
+    const result = error ? { success: false, error: error.message } : { success: true };
     
     if (result.success) {
       setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });

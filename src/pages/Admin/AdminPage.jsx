@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../hooks/useAuth_v1.1';
+import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
 import { Button } from '../../components/ui';
-import UserManagement from './components/UserManagement';
+import UserManagement_v11 from './UserManagement_v1.1';
 import ActivityLogs from './components/ActivityLogs';
 
 const AdminPage = () => {
-  const { user } = useAuth();
+  const { user, profile } = useSupabaseAuth();
   const [activeTab, setActiveTab] = useState('users');
   const [users, setUsers] = useState([]);
   const [activityLogs, setActivityLogs] = useState([]);
@@ -44,7 +44,7 @@ const AdminPage = () => {
       localStorage.setItem('users', JSON.stringify(updatedUsers));
       
       // 활동 로그 기록
-      logActivity(user.id, 'USER_APPROVED', `사용자 승인: ${userId}`);
+      logActivity(user?.id, 'USER_APPROVED', `사용자 승인: ${userId}`);
       loadActivityLogs();
       
       alert('사용자가 승인되었습니다.');
@@ -62,7 +62,7 @@ const AdminPage = () => {
         localStorage.setItem('users', JSON.stringify(updatedUsers));
         
         // 활동 로그 기록
-        logActivity(user.id, 'USER_REJECTED', `사용자 거부: ${userId}`);
+        logActivity(user?.id, 'USER_REJECTED', `사용자 거부: ${userId}`);
         loadActivityLogs();
         
         alert('사용자 가입 신청이 거부되었습니다.');
@@ -83,7 +83,7 @@ const AdminPage = () => {
         localStorage.setItem('users', JSON.stringify(updatedUsers));
         
         // 활동 로그 기록
-        logActivity(user.id, 'PASSWORD_RESET_ADMIN', `관리자 비밀번호 초기화: ${userId}`);
+        logActivity(user?.id, 'PASSWORD_RESET_ADMIN', `관리자 비밀번호 초기화: ${userId}`);
         loadActivityLogs();
         
         alert('비밀번호가 000000으로 초기화되었습니다.');
@@ -121,8 +121,8 @@ const AdminPage = () => {
     }
   };
 
-  // 관리자 권한 확인 (임시로 특정 사번을 관리자로 간주)
-  const isAdmin = user && (user.id === 'admin' || user.team === '관리팀' || user.id === '10001');
+  // 관리자 권한 확인
+  const isAdmin = user && (profile?.role === 'admin' || profile?.team === '관리팀');
 
   if (!isAdmin) {
     return (
@@ -153,7 +153,7 @@ const AdminPage = () => {
               <p className="text-sm text-gray-600">사용자 및 시스템 관리</p>
             </div>
             <div className="text-sm text-gray-500">
-              관리자: {user?.name} ({user?.id})
+              관리자: {profile?.name || user?.email} ({profile?.team})
             </div>
           </div>
         </div>
@@ -185,7 +185,7 @@ const AdminPage = () => {
 
           <div className="p-6">
             {activeTab === 'users' && (
-              <UserManagement
+              <UserManagement_v11
                 users={users}
                 onApprove={handleApproveUser}
                 onReject={handleRejectUser}

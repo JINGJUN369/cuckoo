@@ -19,7 +19,7 @@ import ProjectProgress from './components/ProjectProgress';
  * - 자동 저장 기능
  */
 const ProjectEdit_v11 = () => {
-  const { state, setCurrentView, updateProject, moveToCompleted } = useProjectStore();
+  const { selectedProject, setCurrentView, updateProject, completeProject } = useProjectStore();
   
   // 현재 사용자 정보 (v1.1 개선)
   const getCurrentUser = useCallback(() => {
@@ -33,7 +33,6 @@ const ProjectEdit_v11 = () => {
   }, []);
   
   const user = getCurrentUser();
-  const { selectedProject } = state;
   
   console.log(`📝 [v1.1] ProjectEdit rendered with selectedProject: ${selectedProject?.name || 'None'}`);
   
@@ -219,7 +218,7 @@ const ProjectEdit_v11 = () => {
     
     if (window.confirm(`"${selectedProject.name}" 프로젝트를 완료 처리하시겠습니까?\n\n완료된 프로젝트는 "완료된 프로젝트" 페이지에서 관리됩니다.`)) {
       try {
-        moveToCompleted(selectedProject.id);
+        completeProject(selectedProject.id);
         
         // 성공 알림
         const notification = document.createElement('div');
@@ -236,7 +235,7 @@ const ProjectEdit_v11 = () => {
         alert('프로젝트 완료 처리 중 오류가 발생했습니다.');
       }
     }
-  }, [selectedProject, moveToCompleted, setCurrentView]);
+  }, [selectedProject, completeProject, setCurrentView]);
 
   // 진행률 계산
   const overallProgress = useMemo(() => getProjectProgress(selectedProject), [selectedProject]);

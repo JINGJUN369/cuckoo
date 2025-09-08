@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '../../hooks/useAuth_v1.1';
+import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
 
 /**
  * v1.1 PermissionGuard - 권한 기반 컴포넌트 가드
@@ -24,15 +24,15 @@ const PermissionGuard_v11 = ({
   onUnauthorized = null,
   className = ''
 }) => {
-  const { 
-    user, 
-    isAuthenticated, 
-    isLoading, 
-    hasPermission, 
-    hasAnyPermission, 
-    hasAllPermissions, 
-    hasRole 
-  } = useAuth();
+  const { user, profile, loading } = useSupabaseAuth();
+  const isAuthenticated = !!user;
+  const isLoading = loading;
+  
+  // 간단한 권한 체크 헬퍼 함수들
+  const hasRole = (roleToCheck) => profile?.role === roleToCheck;
+  const hasPermission = (perm) => profile?.role === 'admin' || profile?.permissions?.includes(perm);
+  const hasAnyPermission = (perms) => perms.some(perm => hasPermission(perm));
+  const hasAllPermissions = (perms) => perms.every(perm => hasPermission(perm));
 
   console.log('🛡️ [v1.1] PermissionGuard checking permissions', { 
     permission, 
@@ -277,7 +277,8 @@ export const UserOrAbove = ({ children, fallback }) => (
 
 // 권한 상태 표시 컴포넌트
 export const PermissionStatus = ({ className = '' }) => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, profile } = useSupabaseAuth();
+  const isAuthenticated = !!user;
 
   if (!isAuthenticated) {
     return (
@@ -303,9 +304,9 @@ export const PermissionStatus = ({ className = '' }) => {
   };
 
   return (
-    <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${roleColors[user?.role] || roleColors.viewer} ${className}`}>
-      <span className="mr-1">{roleIcons[user?.role] || roleIcons.viewer}</span>
-      {user?.role || 'viewer'}
+    <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${roleColors[profile?.role] || roleColors.viewer} ${className}`}>
+      <span className="mr-1">{roleIcons[profile?.role] || roleIcons.viewer}</span>
+      {profile?.role || 'viewer'}
     </div>
   );
 };

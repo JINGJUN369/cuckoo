@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { useAuth } from '../../hooks/useAuth_v1.1';
+import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
 import { useProjectStore } from '../../hooks/useProjectStore_v1.1';
 import { Button } from '../../components/ui';
 import { getProjectProgress } from '../../types/project';
@@ -20,17 +20,16 @@ import { getProjectProgress } from '../../types/project';
 const AdminDashboard_v11 = () => {
   console.log('👑 [v1.1] AdminDashboard rendering');
 
-  const { user, hasPermission, PERMISSIONS } = useAuth();
-  const { state } = useProjectStore();
-  const { projects = [], completedProjects = [] } = state;
+  const { user, profile } = useSupabaseAuth();
+  const { projects = [], completedProjects = [], opinions = [] } = useProjectStore();
 
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'users', 'projects', 'security', 'system'
   const [timeRange, setTimeRange] = useState('7d'); // '1d', '7d', '30d', '90d'
   const [refreshInterval, setRefreshInterval] = useState(30000); // 30초
   const [alerts, setAlerts] = useState([]);
 
-  // 권한 확인
-  if (!hasPermission(PERMISSIONS.ADMIN_ACCESS)) {
+  // 권한 확인 (임시 버전)
+  if (!profile || profile.role !== 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -313,7 +312,7 @@ const AdminDashboard_v11 = () => {
       users: JSON.parse(localStorage.getItem('users') || '[]'),
       projects: JSON.parse(localStorage.getItem('projects') || '[]'),
       completedProjects: JSON.parse(localStorage.getItem('completedProjects') || '[]'),
-      opinions: JSON.parse(localStorage.getItem('opinions') || '[]'),
+      opinions: opinions,
       activityLogs: JSON.parse(localStorage.getItem('activityLogs') || '[]')
     };
 

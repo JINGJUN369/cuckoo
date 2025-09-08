@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
 // import { User, LogOut, Settings } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth_v1.1';
+import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
 import ProfileModal from './ProfileModal';
+// import OnlineUsersIndicator from './OnlineUsersIndicator';
 
-const BrandHeader = ({ showNav = true, currentPage, setCurrentPage }) => {
-  const { user, logout } = useAuth();
+const BrandHeader = ({ showNav = true, currentPage, setCurrentPage, onToggleOnlineUsers }) => {
+  const { user, profile, signOut } = useSupabaseAuth();
   const [showProfileModal, setShowProfileModal] = useState(false);
+  
+  // 디버깅: 사용자 정보 확인
+  console.log('BrandHeader - user:', user);
+  console.log('BrandHeader - profile:', profile);
+  console.log('BrandHeader - profile.role:', profile?.role);
+  console.log('BrandHeader - isAdmin?:', profile?.role === 'admin');
 
   return (
     <>
@@ -37,7 +44,7 @@ const BrandHeader = ({ showNav = true, currentPage, setCurrentPage }) => {
                 >
                   📊 프로젝트
                 </button>
-                {(user.id === 'admin' || user.team === '관리팀') && (
+                {profile?.role === 'admin' && (
                   <button 
                     onClick={() => setCurrentPage && setCurrentPage('admin')}
                     className={`text-sm font-medium transition-colors ${
@@ -51,6 +58,9 @@ const BrandHeader = ({ showNav = true, currentPage, setCurrentPage }) => {
                 )}
               </nav>
               
+              {/* 온라인 사용자 표시기 - v1.1에서는 임시 비활성화 */}
+              {/* <OnlineUsersIndicator onToggleDetails={onToggleOnlineUsers} /> */}
+              
               {/* 사용자 메뉴 */}
               <div className="flex items-center space-x-3">
                 <div className="flex items-center space-x-3 text-sm">
@@ -61,8 +71,8 @@ const BrandHeader = ({ showNav = true, currentPage, setCurrentPage }) => {
                     <span className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center text-xs font-medium">
                       👤
                     </span>
-                    <span className="text-gray-700 font-medium">{user.name || user.id}</span>
-                    <span className="text-gray-500">({user.team})</span>
+                    <span className="text-gray-700 font-medium">{profile?.name || user?.email}</span>
+                    <span className="text-gray-500">({profile?.team})</span>
                   </button>
                   
                   <div className="flex items-center space-x-1">
@@ -72,7 +82,7 @@ const BrandHeader = ({ showNav = true, currentPage, setCurrentPage }) => {
                     <button 
                       onClick={() => {
                         console.log('로그아웃 버튼 클릭됨', user);
-                        logout();
+                        signOut();
                       }}
                       className="px-3 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors text-sm"
                     >
