@@ -40,6 +40,7 @@ const actionTypes = {
   UPDATE_PROJECT: 'UPDATE_PROJECT',
   DELETE_PROJECT: 'DELETE_PROJECT',
   COMPLETE_PROJECT: 'COMPLETE_PROJECT',
+  RESTORE_PROJECT: 'RESTORE_PROJECT',
   SET_COMPLETED_PROJECTS: 'SET_COMPLETED_PROJECTS',
   SET_OPINIONS: 'SET_OPINIONS',
   ADD_OPINION: 'ADD_OPINION',
@@ -105,6 +106,16 @@ function projectReducer(state, action) {
         completedProjects: projectToComplete 
           ? [...state.completedProjects, { ...projectToComplete, completedAt: new Date().toISOString() }]
           : state.completedProjects,
+        loading: false,
+        error: null
+      };
+    
+    case actionTypes.RESTORE_PROJECT:
+      const { projectId: completedId, restoredProject } = action.payload;
+      return {
+        ...state,
+        projects: [...state.projects, restoredProject],
+        completedProjects: state.completedProjects.filter(p => p.id !== completedId),
         loading: false,
         error: null
       };
@@ -372,6 +383,72 @@ export const SupabaseProjectProvider = ({ children }) => {
     }
   }, [user]);
 
+  // 프로젝트 복원 처리 (완료된 프로젝트를 다시 진행 중으로)
+  const restoreProject = useCallback(async (projectId) => {
+    if (!user) {
+      dispatch({ type: actionTypes.SET_ERROR, payload: '로그인이 필요합니다' });
+      return false;
+    }
+
+    dispatch({ type: actionTypes.SET_LOADING, payload: true });
+    
+    try {
+      // 1. completed_projects 테이블에서 프로젝트 데이터 조회
+      const { data: completedProjectData, error: fetchError } = await supabase
+        .from('completed_projects')
+        .select('*')
+        .eq('id', projectId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!completedProjectData) throw new Error('완료된 프로젝트를 찾을 수 없습니다');
+
+      // 2. 복원을 위해 완료 관련 필드 제거
+      const { completed_at, completed_by, status, ...restoreData } = completedProjectData;
+      
+      // 원본 ID로 복원하기 위해 ID 수정 (completed_xxx_xxx에서 원본 ID 추출)
+      let originalId = restoreData.id;
+      if (restoreData.id.startsWith('completed_')) {
+        const parts = restoreData.id.split('_');
+        if (parts.length >= 2) {
+          originalId = parts.slice(1, -1).join('_'); // 마지막 타임스탬프 부분 제거
+        }
+      }
+
+      const restoredProject = {
+        ...restoreData,
+        id: originalId,
+        updated_at: new Date().toISOString(),
+        updated_by: user.id
+      };
+
+      // 3. projects 테이블에 다시 추가
+      const { error: insertError } = await supabase
+        .from('projects')
+        .insert([restoredProject]);
+
+      if (insertError) throw insertError;
+
+      // 4. completed_projects 테이블에서 삭제
+      const { error: deleteError } = await supabase
+        .from('completed_projects')
+        .delete()
+        .eq('id', projectId);
+
+      if (deleteError) throw deleteError;
+
+      console.log('✅ 프로젝트 복원 성공:', originalId);
+      dispatch({ type: actionTypes.RESTORE_PROJECT, payload: { projectId, restoredProject } });
+      dispatch({ type: actionTypes.SET_LOADING, payload: false });
+      return true;
+    } catch (error) {
+      console.error('❌ 프로젝트 복원 실패:', error);
+      dispatch({ type: actionTypes.SET_ERROR, payload: error.message });
+      dispatch({ type: actionTypes.SET_LOADING, payload: false });
+      return false;
+    }
+  }, [user]);
+
   // 의견 관련 함수들
   const loadOpinions = useCallback(async (projectId) => {
     if (!projectId) return;
@@ -569,6 +646,7 @@ export const SupabaseProjectProvider = ({ children }) => {
     updateProject,
     deleteProject,
     completeProject,
+    restoreProject,
     
     // 의견 관련 액션
     loadOpinions,
@@ -601,6 +679,7 @@ export const SupabaseProjectProvider = ({ children }) => {
     updateProject,
     deleteProject,
     completeProject,
+    restoreProject,
     loadOpinions,
     addOpinion,
     updateOpinion,
