@@ -337,10 +337,10 @@ export const SupabaseProjectProvider = ({ children }) => {
       if (fetchError) throw fetchError;
       if (!projectData) throw new Error('프로젝트를 찾을 수 없습니다');
 
-      // 2. completed_projects 테이블에 추가
+      // 2. completed_projects 테이블에 추가 (original_id 제거 - 테이블에 컬럼이 없음)
       const completedProject = {
         ...projectData,
-        original_id: projectData.id,
+        id: `completed_${projectData.id}_${Date.now()}`, // 새로운 ID 생성
         completed_at: new Date().toISOString(),
         completed_by: user.id,
         status: 'completed'
