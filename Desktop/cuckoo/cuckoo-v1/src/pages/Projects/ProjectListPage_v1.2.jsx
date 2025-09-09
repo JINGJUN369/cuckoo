@@ -14,7 +14,7 @@ import * as XLSX from 'xlsx';
 const ProjectListPage_v1_2 = () => {
   const navigate = useNavigate();
   const { user: profile } = useSupabaseAuth();
-  const { projects, createProject, deleteProject, completeProject, setCurrentView } = useSupabaseProjectStore();
+  const { projects, createProject, deleteProject, completeProject } = useSupabaseProjectStore();
   
   console.log('📁 [v1.2] ProjectListPage rendered');
   console.log('📁 [v1.2] Current projects count:', projects?.length || 0);
@@ -138,7 +138,7 @@ const ProjectListPage_v1_2 = () => {
         
         // 완료 프로젝트 페이지로 이동
         console.log('🚀 Navigating to completed projects view...');
-        setCurrentView('completed');
+        navigate('/completed');
       } else {
         console.error('❌ [Admin] Project archiving failed');
         alert('프로젝트 완료 처리에 실패했습니다.');
