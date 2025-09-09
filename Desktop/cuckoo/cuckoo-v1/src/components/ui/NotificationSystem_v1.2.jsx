@@ -45,7 +45,7 @@ const NotificationSystem_v1_2 = ({
     const notificationMap = new Map();
 
     pendingOpinions.forEach(opinion => {
-      const project = projects.find(p => p.id === (opinion.projectId || opinion.project_id));
+      const project = projects.find(p => p.id === opinion.project_id);
       const projectName = project?.name || '알 수 없는 프로젝트';
       
       // 우선순위 점수 계산
@@ -57,19 +57,19 @@ const NotificationSystem_v1_2 = ({
       }[opinion.priority] || 2;
 
       // 생성 시간 기준 점수 (오래된 것일수록 높은 점수)
-      const createdAt = new Date(opinion.createdAt || opinion.created_at);
+      const createdAt = new Date(opinion.created_at);
       const daysSinceCreated = Math.floor((new Date() - createdAt) / (1000 * 60 * 60 * 24));
       const ageScore = Math.min(daysSinceCreated * 0.1, 2); // 최대 2점
 
       const notification = {
         id: opinion.id,
-        projectId: opinion.projectId || opinion.project_id,
+        projectId: opinion.project_id,
         projectName,
-        content: opinion.message || opinion.content || '내용이 없습니다.',
+        content: opinion.message || '내용이 없습니다.',
         priority: opinion.priority || 'normal',
         stage: opinion.stage || 'general',
-        createdAt: opinion.createdAt || opinion.created_at,
-        createdBy: opinion.createdByName || opinion.author_name || opinion.createdBy || '익명',
+        createdAt: opinion.created_at,
+        createdBy: opinion.author_name || '익명',
         createdByTeam: opinion.createdByTeam,
         score: priorityScore + ageScore,
         daysSinceCreated

@@ -186,7 +186,7 @@ const DashboardPage_v1_2 = () => {
   const recentOpinions = useMemo(() => {
     return opinions
       .filter(o => o.status !== 'deleted')
-      .sort((a, b) => new Date(b.createdAt || b.created_at) - new Date(a.createdAt || a.created_at))
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       .slice(0, 5);
   }, [opinions]);
 
@@ -444,13 +444,13 @@ const DashboardPage_v1_2 = () => {
             ) : (
               <div className="space-y-4">
                 {recentOpinions.map(opinion => {
-                  const project = projects.find(p => p.id === (opinion.projectId || opinion.project_id));
+                  const project = projects.find(p => p.id === opinion.project_id);
                   return (
                     <div key={opinion.id} className="border-b border-gray-100 last:border-b-0 pb-3 last:pb-0">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
                           <p className="text-sm text-gray-900 line-clamp-2">
-                            {opinion.message || opinion.content || '내용이 없습니다.'}
+                            {opinion.message || '내용이 없습니다.'}
                           </p>
                           <div className="mt-2 flex items-center space-x-2">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -490,7 +490,7 @@ const DashboardPage_v1_2 = () => {
                         <div>
                           <span>{project?.name || '프로젝트 없음'}</span>
                           <span className="mx-1">•</span>
-                          <span>{opinion.createdByName || opinion.author_name || opinion.createdBy || '익명'}</span>
+                          <span>{opinion.author_name || '익명'}</span>
                           {opinion.createdByTeam && (
                             <>
                               <span className="mx-1">•</span>
@@ -498,10 +498,10 @@ const DashboardPage_v1_2 = () => {
                             </>
                           )}
                           <span className="mx-1">•</span>
-                          <span>{new Date(opinion.createdAt || opinion.created_at).toLocaleDateString()}</span>
+                          <span>{new Date(opinion.created_at).toLocaleDateString()}</span>
                         </div>
                         <Link
-                          to={`/projects/${opinion.projectId || opinion.project_id}?tab=opinions`}
+                          to={`/projects/${opinion.project_id}?tab=opinions`}
                           className="text-blue-600 hover:text-blue-800 underline"
                         >
                           확인하기

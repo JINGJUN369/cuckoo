@@ -46,7 +46,7 @@ const OpinionList_v1_2 = ({
 
     // 프로젝트별 의견 필터링
     let filtered = opinions.filter(opinion => 
-      opinion.projectId === project.id || opinion.project_id === project.id
+      opinion.project_id === project.id
     );
 
     // Stage별 필터링
@@ -56,8 +56,8 @@ const OpinionList_v1_2 = ({
 
     // 정렬
     filtered.sort((a, b) => {
-      const dateA = new Date(a.createdAt || a.created_at);
-      const dateB = new Date(b.createdAt || b.created_at);
+      const dateA = new Date(a.created_at);
+      const dateB = new Date(b.created_at);
       
       switch (sortBy) {
         case 'newest':
@@ -81,7 +81,7 @@ const OpinionList_v1_2 = ({
     
     if (project) {
       opinions.forEach(opinion => {
-        if (opinion.projectId === project.id || opinion.project_id === project.id) {
+        if (opinion.project_id === project.id) {
           counts.all++;
           counts[opinion.stage] = (counts[opinion.stage] || 0) + 1;
         }
@@ -102,7 +102,7 @@ const OpinionList_v1_2 = ({
   // 의견 수정 시작
   const handleEditStart = useCallback((opinion) => {
     setEditingOpinion(opinion.id);
-    setEditContent(opinion.message || opinion.content);
+    setEditContent(opinion.message);
   }, []);
 
   // 의견 수정 취소
@@ -273,12 +273,12 @@ const OpinionList_v1_2 = ({
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-900">
-                        {opinion.createdByName || opinion.author_name || opinion.createdBy || '익명'}
+                        {opinion.author_name || '익명'}
                       </p>
                       <p className="text-xs text-gray-500">
                         {opinion.createdByTeam && <span className="mr-2">{opinion.createdByTeam}</span>}
-                        {new Date(opinion.createdAt || opinion.created_at).toLocaleString()}
-                        {opinion.updatedAt && opinion.updatedAt !== opinion.createdAt && (
+                        {new Date(opinion.created_at).toLocaleString()}
+                        {opinion.updated_at && opinion.updated_at !== opinion.created_at && (
                           <span> (수정됨)</span>
                         )}
                       </p>
@@ -317,7 +317,7 @@ const OpinionList_v1_2 = ({
                     />
                   ) : (
                     <div className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                      {opinion.message || opinion.content || '내용이 없습니다.'}
+                      {opinion.message || '내용이 없습니다.'}
                     </div>
                   )}
                 </div>
