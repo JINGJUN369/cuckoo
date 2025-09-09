@@ -56,6 +56,11 @@ export const useSupabaseAuth = () => {
       console.log('🔑 로그인 시도:', email);
       setLoading(true);
       
+      // Supabase 연결 확인
+      if (!process.env.REACT_APP_SUPABASE_URL || !process.env.REACT_APP_SUPABASE_ANON_KEY) {
+        throw new Error('Supabase 설정이 누락되었습니다.');
+      }
+      
       // users 테이블에서 사용자 확인
       const { data, error } = await supabase
         .from('users')

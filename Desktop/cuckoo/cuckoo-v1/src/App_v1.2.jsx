@@ -172,24 +172,28 @@ function App_v1_2() {
                 </ProtectedRoute>
               } />
               
-              {/* Catch all - 404 fallback */}
+              {/* Catch all - 404 fallback (Public) */}
               <Route path="*" element={
-                <ProtectedRoute>
-                  <Layout_v1_2>
-                    <div className="min-h-screen flex items-center justify-center">
-                      <div className="text-center">
-                        <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
-                        <p className="text-gray-600 mb-8">페이지를 찾을 수 없습니다.</p>
-                        <a 
-                          href="/dashboard" 
-                          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                        >
-                          대시보드로 돌아가기
-                        </a>
-                      </div>
+                <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+                  <div className="text-center bg-white p-12 rounded-lg shadow-xl">
+                    <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
+                    <p className="text-gray-600 mb-8">페이지를 찾을 수 없습니다.</p>
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                      <a 
+                        href="/" 
+                        className="bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700 transition-colors"
+                      >
+                        홈으로 돌아가기
+                      </a>
+                      <a 
+                        href="/login" 
+                        className="bg-white text-blue-600 px-6 py-3 rounded border-2 border-blue-600 hover:bg-blue-50 transition-colors"
+                      >
+                        로그인
+                      </a>
                     </div>
-                  </Layout_v1_2>
-                </ProtectedRoute>
+                  </div>
+                </div>
               } />
               </Routes>
             </div>

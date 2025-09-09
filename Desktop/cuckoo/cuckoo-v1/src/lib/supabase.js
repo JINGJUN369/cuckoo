@@ -183,4 +183,10 @@ if (process.env.NODE_ENV === 'development') {
   console.log('🔗 Supabase 하이브리드 클라이언트 설정 완료:', supabaseUrl)
 }
 
+// 환경 변수 확인 - 없으면 하이브리드 모드 비활성화
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn('⚠️ Supabase credentials not found, hybrid mode disabled')
+  currentHybridMode = HYBRID_MODE.DISABLED
+}
+
 export default supabase
