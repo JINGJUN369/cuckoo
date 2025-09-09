@@ -44,27 +44,29 @@ const ProjectEditPage_v1_2 = () => {
 
   console.log('✏️ [v1.2] ProjectEditPage rendered for project:', projectId);
 
-  // URL 파라미터의 프로젝트 ID로 프로젝트 찾기 및 선택
+  // URL 파라미터의 프로젝트 ID로 프로젝트 찾기 및 선택 (항상 최신 데이터로 업데이트)
   useEffect(() => {
     if (projectId && projects.length > 0) {
       const project = projects.find(p => p.id === projectId);
-      if (project && (!selectedProject || selectedProject.id !== projectId)) {
-        console.log('✅ [v1.2] Setting selected project for edit:', project.name);
+      if (project) {
+        console.log('✅ [v1.2] Setting selected project for edit (fresh data):', project.name);
         setSelectedProject(project);
+        
+        // 기본정보도 최신 데이터로 초기화
+        setBasicInfo({
+          name: project.name || '',
+          modelName: project.modelName || '',
+          description: project.description || ''
+        });
+        
+        // 편집 상태 초기화
+        setHasUnsavedChanges(false);
+        setPendingChanges({});
       }
     }
-  }, [projectId, projects, selectedProject, setSelectedProject]);
+  }, [projectId, projects, setSelectedProject]); // selectedProject 의존성 제거하여 항상 업데이트
 
-  // 선택된 프로젝트가 변경될 때 기본 정보 초기화
-  useEffect(() => {
-    if (selectedProject) {
-      setBasicInfo({
-        name: selectedProject.name || '',
-        modelName: selectedProject.modelName || '',
-        description: selectedProject.description || ''
-      });
-    }
-  }, [selectedProject]);
+  // 이 useEffect는 위의 useEffect로 통합됨
 
   // 프로젝트 진행률 계산
   const projectProgress = useMemo(() => {
@@ -100,7 +102,16 @@ const ProjectEditPage_v1_2 = () => {
         setLastSaved(new Date());
         setHasUnsavedChanges(false);
         setPendingChanges({});
-        console.log('✅ [v1.2] All changes saved successfully');
+        
+        // 저장된 결과로 selectedProject와 로컬 상태 동기화
+        setSelectedProject(result);
+        setBasicInfo({
+          name: result.name || '',
+          modelName: result.modelName || '',
+          description: result.description || ''
+        });
+        
+        console.log('✅ [v1.2] All changes saved successfully and states synchronized');
         return true;
       } else {
         throw new Error('프로젝트 업데이트에 실패했습니다.');
