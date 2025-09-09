@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Input } from '../../../components/ui';
 import { getStageProgress } from '../../../types/project';
 
@@ -15,9 +15,19 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
   const [validationErrors, setValidationErrors] = useState({});
   const [touched, setTouched] = useState({});
   
+  // 편집 모드에서는 로컬 상태 사용
+  const [localStageData, setLocalStageData] = useState(() => project?.stage3 || {});
+  
   console.log(`📝 [v1.1] Stage3Form rendered - mode: ${mode}, project: ${project?.name}`);
   
-  const stage3Data = useMemo(() => project?.stage3 || {}, [project?.stage3]);
+  // 프로젝트가 변경되면 로컬 상태 초기화 (view 모드이거나 새 프로젝트 로드시)
+  useEffect(() => {
+    if (project?.stage3) {
+      setLocalStageData(project.stage3);
+    }
+  }, [project?.id]); // project.id로 의존성 설정하여 새 프로젝트 로드시에만 초기화
+  
+  const stage3Data = mode === 'edit' ? localStageData : (project?.stage3 || {});
   
   // 필드 정의 (v1.1 확장)
   const formFields = useMemo(() => [
@@ -139,6 +149,16 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
   const handleFieldChange = useCallback((field, value) => {
     console.log(`📝 [v1.1] Stage3Form field updated: ${field} = ${value}`);
     
+    // 편집 모드에서는 로컬 상태 먼저 업데이트 (UI 반응성을 위해)
+    if (mode === 'edit') {
+      const updatedData = {
+        ...stage3Data,
+        [field]: value
+      };
+      setLocalStageData(updatedData);
+      console.log(`📝 [v1.1] Updated local stage3 data:`, updatedData);
+    }
+    
     // 터치 상태 업데이트
     setTouched(prev => ({ ...prev, [field]: true }));
     
@@ -164,6 +184,16 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
   // 체크박스 업데이트 핸들러
   const handleExecutedChange = useCallback((field, checked) => {
     console.log(`✅ [v1.1] Stage3Form executed updated: ${field} = ${checked}`);
+    
+    // 편집 모드에서는 로컬 상태 먼저 업데이트
+    if (mode === 'edit') {
+      const updatedData = {
+        ...stage3Data,
+        [field]: checked
+      };
+      setLocalStageData(updatedData);
+      console.log(`✅ [v1.1] Updated local stage3 data (checkbox):`, updatedData);
+    }
     
     if (onUpdate && mode === 'edit') {
       const updatedStage3Data = {
