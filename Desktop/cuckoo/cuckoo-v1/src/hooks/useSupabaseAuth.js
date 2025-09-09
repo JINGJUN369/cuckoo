@@ -13,7 +13,7 @@ export const useSupabaseAuth = () => {
     
     let isMounted = true; // 컴포넌트가 마운트된 상태인지 확인
 
-    const checkStoredSession = () => {
+    const checkStoredSession = async () => {
       try {
         const storedUser = localStorage.getItem('currentUser');
         if (storedUser && isMounted) {
@@ -33,7 +33,8 @@ export const useSupabaseAuth = () => {
           // 공개 배포에서는 데모 계정으로 자동 로그인
           if (process.env.NODE_ENV === 'production' || window.location.hostname !== 'localhost') {
             console.log('🌐 공개 배포 환경 - 데모 계정으로 자동 로그인');
-            autoSignInAsDemo();
+            await autoSignInAsDemo();
+            return; // autoSignInAsDemo에서 loading 상태를 관리하므로 여기서 return
           }
         }
       } catch (error) {
@@ -225,35 +226,41 @@ export const useSupabaseAuth = () => {
     }
   };
 
-  // 데모 계정 자동 로그인
+  // 데모 계정 자동 로그인 - Supabase users 테이블에서 데모 계정 사용
   const autoSignInAsDemo = async () => {
     try {
       console.log('🎭 데모 계정 자동 로그인 시작...');
       setLoading(true);
       
-      // 데모 계정 정보 - 공개 배포용
-      const demoUser = {
-        id: 'demo_user_public',
-        email: 'demo@cuckoo.co.kr',
-        name: '데모 사용자',
-        role: 'user',
-        team: '데모팀'
-      };
-
-      setUser(demoUser);
-      setProfile({
-        id: demoUser.id,
-        name: demoUser.name,
-        email: demoUser.email,
-        role: demoUser.role,
-        team: demoUser.team
-      });
-
-      // 로컬스토리지에 저장 (다음 방문 시 빠른 로딩)
-      localStorage.setItem('currentUser', JSON.stringify(demoUser));
+      // 실제 signIn 함수를 사용하여 데모 계정으로 로그인
+      const result = await signIn('demo@cuckoo.co.kr', 'demo123');
       
-      console.log('✅ 데모 계정 자동 로그인 성공');
-      return { data: { user: demoUser }, error: null };
+      if (result.error) {
+        console.warn('❌ 데모 계정 로그인 실패:', result.error);
+        
+        // 데모 계정이 없으면 직접 생성
+        const fallbackUser = {
+          id: 'demo_user_public',
+          email: 'demo@cuckoo.co.kr',
+          name: '데모 사용자',
+          role: 'user',
+          team: '데모팀'
+        };
+
+        setUser(fallbackUser);
+        setProfile({
+          id: fallbackUser.id,
+          name: fallbackUser.name,
+          email: fallbackUser.email,
+          role: fallbackUser.role,
+          team: fallbackUser.team
+        });
+
+        localStorage.setItem('currentUser', JSON.stringify(fallbackUser));
+        console.log('✅ Fallback 데모 계정으로 로그인');
+      }
+      
+      return { data: { user: result.data?.user }, error: null };
     } catch (error) {
       console.error('❌ 데모 계정 자동 로그인 오류:', error);
       return { data: null, error };
