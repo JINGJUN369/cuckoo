@@ -102,7 +102,7 @@ const OpinionList_v1_2 = ({
   // 의견 수정 시작
   const handleEditStart = useCallback((opinion) => {
     setEditingOpinion(opinion.id);
-    setEditContent(opinion.content);
+    setEditContent(opinion.message || opinion.content);
   }, []);
 
   // 의견 수정 취소
@@ -117,7 +117,7 @@ const OpinionList_v1_2 = ({
 
     try {
       const updates = {
-        content: editContent.trim(),
+        message: editContent.trim(),
         updatedAt: new Date().toISOString()
       };
 
@@ -315,7 +315,7 @@ const OpinionList_v1_2 = ({
                     />
                   ) : (
                     <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                      {opinion.content}
+                      {opinion.message || opinion.content}
                     </p>
                   )}
                 </div>
