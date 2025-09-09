@@ -22,8 +22,11 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
   
   // 프로젝트가 변경되면 로컬 상태 초기화 (view 모드이거나 새 프로젝트 로드시)
   useEffect(() => {
-    if (project?.stage2) {
-      setLocalStageData(project.stage2);
+    if (project) {
+      // stage2 데이터가 있으면 그대로 사용, 없으면 빈 객체로 초기화
+      const stage2Data = project.stage2 || {};
+      setLocalStageData(stage2Data);
+      console.log(`🔄 [v1.1] Stage2Form data initialized:`, stage2Data);
     }
   }, [project?.id]); // project.id로 의존성 설정하여 새 프로젝트 로드시에만 초기화
   

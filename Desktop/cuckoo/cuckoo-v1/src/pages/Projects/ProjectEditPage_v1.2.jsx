@@ -44,25 +44,44 @@ const ProjectEditPage_v1_2 = () => {
 
   console.log('✏️ [v1.2] ProjectEditPage rendered for project:', projectId);
 
-  // URL 파라미터의 프로젝트 ID로 프로젝트 찾기 및 선택 (편집 중이 아닐 때만)
+  // URL 파라미터의 프로젝트 ID로 프로젝트 찾기 및 선택
   useEffect(() => {
-    if (projectId && projects.length > 0 && !hasUnsavedChanges && Object.keys(pendingChanges).length === 0) {
+    if (projectId && projects.length > 0) {
       const project = projects.find(p => p.id === projectId);
-      if (project && (!selectedProject || selectedProject.id !== project.id)) {
-        console.log('✅ [v1.2] Setting selected project for edit (fresh data):', project.name);
-        setSelectedProject(project);
-        
-        // 기본정보도 최신 데이터로 초기화
-        setBasicInfo({
-          name: project.name || '',
-          modelName: project.modelName || '',
-          description: project.description || ''
-        });
-        
-        console.log('🔄 [v1.2] Project data initialized for editing');
+      if (project) {
+        // 프로젝트가 바뀌었거나, 처음 로드되는 경우에만 데이터 초기화
+        if (!selectedProject || selectedProject.id !== project.id) {
+          console.log('✅ [v1.2] Setting selected project for edit:', project.name);
+          setSelectedProject(project);
+          
+          // 기본정보를 최신 데이터로 초기화 (기존 편집 내용이 없는 경우에만)
+          if (!hasUnsavedChanges && Object.keys(pendingChanges).length === 0) {
+            setBasicInfo({
+              name: project.name || '',
+              modelName: project.modelName || '',
+              description: project.description || ''
+            });
+            console.log('🔄 [v1.2] Basic info initialized:', { 
+              name: project.name, 
+              modelName: project.modelName, 
+              description: project.description 
+            });
+          }
+        }
+        // 이미 선택된 프로젝트지만 기본정보가 비어있다면 다시 로드
+        else if ((!basicInfo.name && project.name) || 
+                 (!basicInfo.modelName && project.modelName) || 
+                 (!basicInfo.description && project.description)) {
+          console.log('🔄 [v1.2] Re-initializing empty basic info from project data');
+          setBasicInfo(prev => ({
+            name: prev.name || project.name || '',
+            modelName: prev.modelName || project.modelName || '',
+            description: prev.description || project.description || ''
+          }));
+        }
       }
     }
-  }, [projectId, projects, setSelectedProject, selectedProject, hasUnsavedChanges, pendingChanges]); // 편집 상태 의존성 추가
+  }, [projectId, projects, setSelectedProject, selectedProject, hasUnsavedChanges, pendingChanges, basicInfo]);
 
   // 이 useEffect는 위의 useEffect로 통합됨
 
