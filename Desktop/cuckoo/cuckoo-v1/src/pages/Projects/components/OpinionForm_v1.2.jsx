@@ -106,7 +106,11 @@ const OpinionForm_v1_2 = ({
                formData.stage === 'stage2' ? 2 :
                formData.stage === 'stage3' ? 3 : 1,
         priority: formData.priority === 'normal' ? 'medium' : formData.priority,
-        status: 'open'
+        status: 'open',
+        created_by: profile.email,
+        // 추가 사용자 정보
+        createdByName: profile.name || profile.email,
+        createdByTeam: profile.department || profile.team || '개발팀'
       };
 
       // 의견 추가

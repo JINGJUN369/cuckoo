@@ -450,7 +450,7 @@ const DashboardPage_v1_2 = () => {
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
                           <p className="text-sm text-gray-900 line-clamp-2">
-                            {opinion.message || opinion.content}
+                            {opinion.message || opinion.content || '내용이 없습니다.'}
                           </p>
                           <div className="mt-2 flex items-center space-x-2">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -490,7 +490,13 @@ const DashboardPage_v1_2 = () => {
                         <div>
                           <span>{project?.name || '프로젝트 없음'}</span>
                           <span className="mx-1">•</span>
-                          <span>{opinion.createdByName || opinion.createdBy}</span>
+                          <span>{opinion.createdByName || opinion.author_name || opinion.createdBy || '익명'}</span>
+                          {opinion.createdByTeam && (
+                            <>
+                              <span className="mx-1">•</span>
+                              <span>{opinion.createdByTeam}</span>
+                            </>
+                          )}
                           <span className="mx-1">•</span>
                           <span>{new Date(opinion.createdAt || opinion.created_at).toLocaleDateString()}</span>
                         </div>

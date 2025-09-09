@@ -273,9 +273,10 @@ const OpinionList_v1_2 = ({
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-900">
-                        {opinion.createdByName || opinion.createdBy}
+                        {opinion.createdByName || opinion.author_name || opinion.createdBy || '익명'}
                       </p>
                       <p className="text-xs text-gray-500">
+                        {opinion.createdByTeam && <span className="mr-2">{opinion.createdByTeam}</span>}
                         {new Date(opinion.createdAt || opinion.created_at).toLocaleString()}
                         {opinion.updatedAt && opinion.updatedAt !== opinion.createdAt && (
                           <span> (수정됨)</span>
@@ -312,11 +313,12 @@ const OpinionList_v1_2 = ({
                       onChange={(e) => setEditContent(e.target.value)}
                       className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       rows={3}
+                      placeholder="의견 내용을 입력하세요..."
                     />
                   ) : (
-                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                      {opinion.message || opinion.content}
-                    </p>
+                    <div className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                      {opinion.message || opinion.content || '내용이 없습니다.'}
+                    </div>
                   )}
                 </div>
 
