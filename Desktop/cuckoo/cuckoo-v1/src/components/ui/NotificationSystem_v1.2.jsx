@@ -65,11 +65,12 @@ const NotificationSystem_v1_2 = ({
         id: opinion.id,
         projectId: opinion.projectId || opinion.project_id,
         projectName,
-        content: opinion.content,
+        content: opinion.message || opinion.content || '내용이 없습니다.',
         priority: opinion.priority || 'normal',
         stage: opinion.stage || 'general',
         createdAt: opinion.createdAt || opinion.created_at,
-        createdBy: opinion.createdByName || opinion.createdBy,
+        createdBy: opinion.createdByName || opinion.author_name || opinion.createdBy || '익명',
+        createdByTeam: opinion.createdByTeam,
         score: priorityScore + ageScore,
         daysSinceCreated
       };
@@ -212,6 +213,12 @@ const NotificationSystem_v1_2 = ({
                       <span>{notification.projectName}</span>
                       <span className="mx-1">•</span>
                       <span>{notification.createdBy}</span>
+                      {notification.createdByTeam && (
+                        <>
+                          <span className="mx-1">•</span>
+                          <span>{notification.createdByTeam}</span>
+                        </>
+                      )}
                       <span className="mx-1">•</span>
                       <span>{new Date(notification.createdAt).toLocaleDateString()}</span>
                     </div>
@@ -266,6 +273,12 @@ const NotificationSystem_v1_2 = ({
                       <span>{notification.projectName}</span>
                       <span className="mx-1">•</span>
                       <span>{notification.createdBy}</span>
+                      {notification.createdByTeam && (
+                        <>
+                          <span className="mx-1">•</span>
+                          <span>{notification.createdByTeam}</span>
+                        </>
+                      )}
                       <span className="mx-1">•</span>
                       <span>{new Date(notification.createdAt).toLocaleDateString()}</span>
                     </div>
