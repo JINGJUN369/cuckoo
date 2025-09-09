@@ -9,12 +9,12 @@ import ProjectCard_v11 from '../../components/ui/ProjectCard_v1.1';
 import * as XLSX from 'xlsx';
 
 /**
- * ProjectListPage v1.2 - 프로젝트 목록 페이지 (localStorage 기반)
+ * ProjectListPage v1.2 - 프로젝트 목록 페이지 (Supabase 기반)
  */
 const ProjectListPage_v1_2 = () => {
   const navigate = useNavigate();
   const { user: profile } = useSupabaseAuth();
-  const { projects, createProject, deleteProject, moveToCompleted, setCurrentView } = useSupabaseProjectStore();
+  const { projects, createProject, deleteProject, completeProject, setCurrentView } = useSupabaseProjectStore();
   
   console.log('📁 [v1.2] ProjectListPage rendered');
   console.log('📁 [v1.2] Current projects count:', projects?.length || 0);
@@ -112,12 +112,12 @@ const ProjectListPage_v1_2 = () => {
       console.log('🗑️ [Admin] Deleting project:', project.name);
       const result = await deleteProject(project.id);
       
-      if (result.success) {
+      if (result) {
         console.log('✅ [Admin] Project deleted successfully:', project.name);
-        // 성공 알림은 이미 ProjectCard에서 처리
+        alert(`"${project.name}" 프로젝트가 삭제되었습니다.`);
       } else {
-        console.error('❌ [Admin] Project deletion failed:', result.error);
-        alert('프로젝트 삭제에 실패했습니다: ' + result.error);
+        console.error('❌ [Admin] Project deletion failed');
+        alert('프로젝트 삭제에 실패했습니다.');
       }
     } catch (error) {
       console.error('❌ [Admin] Project deletion error:', error);
@@ -130,16 +130,9 @@ const ProjectListPage_v1_2 = () => {
     try {
       console.log('📁 [Admin] Archiving project:', project.name);
       
-      const completionData = {
-        completedAt: new Date().toISOString(),
-        completedBy: profile?.name || '관리자',
-        finalProgress: calculateProgress(project),
-        archiveReason: '관리자에 의한 완료 처리'
-      };
+      const result = await completeProject(project.id);
       
-      const result = await moveToCompleted(project.id, completionData);
-      
-      if (result.success) {
+      if (result) {
         console.log('✅ [Admin] Project archived successfully:', project.name);
         alert(`"${project.name}" 프로젝트가 완료 처리되었습니다.`);
         
@@ -147,8 +140,8 @@ const ProjectListPage_v1_2 = () => {
         console.log('🚀 Navigating to completed projects view...');
         setCurrentView('completed');
       } else {
-        console.error('❌ [Admin] Project archiving failed:', result.error);
-        alert('프로젝트 완료 처리에 실패했습니다: ' + result.error);
+        console.error('❌ [Admin] Project archiving failed');
+        alert('프로젝트 완료 처리에 실패했습니다.');
       }
     } catch (error) {
       console.error('❌ [Admin] Project archiving error:', error);
