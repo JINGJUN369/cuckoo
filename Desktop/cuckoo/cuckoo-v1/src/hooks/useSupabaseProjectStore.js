@@ -327,20 +327,40 @@ export const SupabaseProjectProvider = ({ children }) => {
     dispatch({ type: actionTypes.SET_LOADING, payload: true });
     
     try {
-      const { data, error } = await supabase
+      // 1. 프로젝트 데이터 조회
+      const { data: projectData, error: fetchError } = await supabase
         .from('projects')
-        .update({
-          completed: true,
-          completed_at: new Date().toISOString(),
-          completed_by: user.id
-        })
+        .select('*')
         .eq('id', projectId)
-        .select()
         .single();
 
-      if (error) throw error;
+      if (fetchError) throw fetchError;
+      if (!projectData) throw new Error('프로젝트를 찾을 수 없습니다');
 
-      console.log('✅ 프로젝트 완료 처리 성공:', data);
+      // 2. completed_projects 테이블에 추가
+      const completedProject = {
+        ...projectData,
+        original_id: projectData.id,
+        completed_at: new Date().toISOString(),
+        completed_by: user.id,
+        status: 'completed'
+      };
+
+      const { error: insertError } = await supabase
+        .from('completed_projects')
+        .insert([completedProject]);
+
+      if (insertError) throw insertError;
+
+      // 3. 원본 projects 테이블에서 삭제
+      const { error: deleteError } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', projectId);
+
+      if (deleteError) throw deleteError;
+
+      console.log('✅ 프로젝트 완료 처리 성공:', projectId);
       dispatch({ type: actionTypes.COMPLETE_PROJECT, payload: projectId });
       dispatch({ type: actionTypes.SET_LOADING, payload: false });
       return true;
@@ -503,6 +523,28 @@ export const SupabaseProjectProvider = ({ children }) => {
     dispatch({ type: actionTypes.SET_ERROR, payload: null });
   }, []);
 
+  // 완료된 프로젝트 로드
+  const loadCompletedProjects = useCallback(async () => {
+    dispatch({ type: actionTypes.SET_LOADING, payload: true });
+    
+    try {
+      const { data, error } = await supabase
+        .from('completed_projects')
+        .select('*')
+        .order('completed_at', { ascending: false });
+
+      if (error) throw error;
+
+      console.log('✅ 완료된 프로젝트 로드 성공:', data?.length || 0);
+      dispatch({ type: actionTypes.SET_COMPLETED_PROJECTS, payload: data || [] });
+      dispatch({ type: actionTypes.SET_LOADING, payload: false });
+    } catch (error) {
+      console.error('❌ 완료된 프로젝트 로드 실패:', error);
+      dispatch({ type: actionTypes.SET_ERROR, payload: error.message });
+      dispatch({ type: actionTypes.SET_LOADING, payload: false });
+    }
+  }, []);
+
   // 초기 데이터 로드
     console.log("🐛 [Debug] useEffect triggered - user:", !!user, "isInitialized:", isInitialized);
   useEffect(() => {
@@ -522,6 +564,7 @@ export const SupabaseProjectProvider = ({ children }) => {
     
     // 프로젝트 관련 액션
     loadProjects,
+    loadCompletedProjects,
     createProject,
     updateProject,
     deleteProject,
