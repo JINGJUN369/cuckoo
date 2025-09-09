@@ -54,34 +54,43 @@ const ProjectEditPage_v1_2 = () => {
           console.log('✅ [v1.2] Setting selected project for edit:', project.name);
           setSelectedProject(project);
           
-          // 기본정보를 최신 데이터로 초기화 (기존 편집 내용이 없는 경우에만)
-          if (!hasUnsavedChanges && Object.keys(pendingChanges).length === 0) {
-            setBasicInfo({
-              name: project.name || '',
-              modelName: project.modelName || '',
-              description: project.description || ''
-            });
-            console.log('🔄 [v1.2] Basic info initialized:', { 
-              name: project.name, 
-              modelName: project.modelName, 
-              description: project.description 
-            });
-          }
-        }
-        // 이미 선택된 프로젝트지만 기본정보가 비어있다면 다시 로드
-        else if ((!basicInfo.name && project.name) || 
-                 (!basicInfo.modelName && project.modelName) || 
-                 (!basicInfo.description && project.description)) {
-          console.log('🔄 [v1.2] Re-initializing empty basic info from project data');
-          setBasicInfo(prev => ({
-            name: prev.name || project.name || '',
-            modelName: prev.modelName || project.modelName || '',
-            description: prev.description || project.description || ''
-          }));
+          // 기본정보를 최신 데이터로 항상 초기화
+          setBasicInfo({
+            name: project.name || '',
+            modelName: project.modelName || '',
+            description: project.description || ''
+          });
+          console.log('🔄 [v1.2] Basic info initialized:', { 
+            name: project.name, 
+            modelName: project.modelName, 
+            description: project.description 
+          });
         }
       }
     }
-  }, [projectId, projects, setSelectedProject, selectedProject, hasUnsavedChanges, pendingChanges, basicInfo]);
+  }, [projectId, projects, setSelectedProject, selectedProject]);
+
+  // 기본정보가 빈칸인 경우를 위한 별도 useEffect (한번만 실행)
+  useEffect(() => {
+    if (selectedProject) {
+      setBasicInfo(prev => {
+        // 현재 값이 비어있고 프로젝트에 데이터가 있는 경우에만 업데이트
+        const shouldUpdate = (!prev.name && selectedProject.name) || 
+                            (!prev.modelName && selectedProject.modelName) ||
+                            (!prev.description && selectedProject.description);
+        
+        if (shouldUpdate) {
+          console.log('🔄 [v1.2] Updating empty basic info fields from selected project');
+          return {
+            name: prev.name || selectedProject.name || '',
+            modelName: prev.modelName || selectedProject.modelName || '',
+            description: prev.description || selectedProject.description || ''
+          };
+        }
+        return prev;
+      });
+    }
+  }, [selectedProject?.id]); // selectedProject.id로 의존성 변경
 
   // 이 useEffect는 위의 useEffect로 통합됨
 
