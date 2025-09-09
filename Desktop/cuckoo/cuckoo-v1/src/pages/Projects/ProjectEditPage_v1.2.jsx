@@ -44,11 +44,11 @@ const ProjectEditPage_v1_2 = () => {
 
   console.log('✏️ [v1.2] ProjectEditPage rendered for project:', projectId);
 
-  // URL 파라미터의 프로젝트 ID로 프로젝트 찾기 및 선택 (항상 최신 데이터로 업데이트)
+  // URL 파라미터의 프로젝트 ID로 프로젝트 찾기 및 선택 (편집 중이 아닐 때만)
   useEffect(() => {
-    if (projectId && projects.length > 0) {
+    if (projectId && projects.length > 0 && !hasUnsavedChanges && Object.keys(pendingChanges).length === 0) {
       const project = projects.find(p => p.id === projectId);
-      if (project) {
+      if (project && (!selectedProject || selectedProject.id !== project.id)) {
         console.log('✅ [v1.2] Setting selected project for edit (fresh data):', project.name);
         setSelectedProject(project);
         
@@ -59,12 +59,10 @@ const ProjectEditPage_v1_2 = () => {
           description: project.description || ''
         });
         
-        // 편집 상태 초기화
-        setHasUnsavedChanges(false);
-        setPendingChanges({});
+        console.log('🔄 [v1.2] Project data initialized for editing');
       }
     }
-  }, [projectId, projects, setSelectedProject]); // selectedProject 의존성 제거하여 항상 업데이트
+  }, [projectId, projects, setSelectedProject, selectedProject, hasUnsavedChanges, pendingChanges]); // 편집 상태 의존성 추가
 
   // 이 useEffect는 위의 useEffect로 통합됨
 
@@ -137,8 +135,8 @@ const ProjectEditPage_v1_2 = () => {
       [stageKey]: stageData
     }));
     
-    // Stage 1에서 modelName이 변경되었을 때 기본정보도 업데이트
-    if (stageNumber === 1 && stageData.modelName !== selectedProject?.modelName) {
+    // Stage 1에서 modelName이 변경되었을 때 기본정보도 업데이트 (현재 값과 다를 때만)
+    if (stageNumber === 1 && stageData.modelName && stageData.modelName !== basicInfo.modelName) {
       console.log(`🏷️ [v1.2] Model name will be updated: ${stageData.modelName}`);
       
       setBasicInfo(prev => ({
@@ -155,7 +153,7 @@ const ProjectEditPage_v1_2 = () => {
     
     setHasUnsavedChanges(true);
     console.log('📝 [v1.2] Changes added to pending - will save on completion');
-  }, [selectedProject?.modelName]);
+  }, [basicInfo.modelName]);
 
   // 기본 정보 업데이트 핸들러 - 즉시 저장하지 않고 상태만 변경
   const handleBasicInfoUpdate = useCallback((field, value) => {
