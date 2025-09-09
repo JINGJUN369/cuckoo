@@ -530,8 +530,7 @@ export const SupabaseProjectProvider = ({ children }) => {
       const newOpinion = {
         ...opinionData,
         stage: stageNumber,
-        created_at: new Date().toISOString(),
-        created_by: user.id
+        created_at: new Date().toISOString()
       };
 
       const { data, error } = await supabase

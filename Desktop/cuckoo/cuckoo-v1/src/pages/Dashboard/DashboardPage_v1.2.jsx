@@ -450,7 +450,7 @@ const DashboardPage_v1_2 = () => {
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
                           <p className="text-sm text-gray-900 line-clamp-2">
-                            {opinion.content}
+                            {opinion.message || opinion.content}
                           </p>
                           <div className="mt-2 flex items-center space-x-2">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
