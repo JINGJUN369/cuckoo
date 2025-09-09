@@ -29,8 +29,11 @@ const ProjectEditPage_v1_2 = () => {
   const [currentStage, setCurrentStage] = useState('basic'); // 'basic', 1, 2, 3
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
-  const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  
+  // 수동저장을 위한 임시 변경사항 추적
+  const [pendingChanges, setPendingChanges] = useState({});
   
   // 기본 정보 편집 상태
   const [basicInfo, setBasicInfo] = useState({
@@ -68,25 +71,37 @@ const ProjectEditPage_v1_2 = () => {
     return selectedProject ? getProjectProgress(selectedProject) : { overall: 0, stage1: 0, stage2: 0, stage3: 0 };
   }, [selectedProject]);
 
-  // 변경사항 저장 함수
-  const handleSaveChanges = useCallback(async (updates, stageName = null) => {
-    if (!selectedProject || !profile) return;
+  // 수동저장 함수 - 완료 버튼 클릭시에만 실행
+  const handleSaveAllChanges = useCallback(async () => {
+    if (!selectedProject || !profile) return false;
+    if (Object.keys(pendingChanges).length === 0 && !hasUnsavedChanges) return true;
 
-    setIsAutoSaving(true);
+    setIsSaving(true);
     setSaveError(null);
 
     try {
-      console.log(`💾 [v1.2] Saving changes to ${stageName || 'project'}:`, updates);
-      console.log(`💾 [v1.2] User info:`, profile);
-      console.log(`💾 [v1.2] Selected project:`, selectedProject?.id);
+      console.log('💾 [v1.2] Manual save - all pending changes:', pendingChanges);
+      console.log('💾 [v1.2] Basic info changes:', basicInfo);
+      
+      // 기본정보 + 모든 대기중인 변경사항을 합쳐서 저장
+      const allUpdates = {
+        ...pendingChanges,
+        name: basicInfo.name,
+        modelName: basicInfo.modelName,
+        description: basicInfo.description
+      };
+      
+      console.log('💾 [v1.2] Final updates to save:', allUpdates);
       
       // 프로젝트 업데이트
-      const result = await updateProject(selectedProject.id, updates);
+      const result = await updateProject(selectedProject.id, allUpdates);
       
       if (result) {
         setLastSaved(new Date());
         setHasUnsavedChanges(false);
-        console.log(`✅ [v1.2] ${stageName || 'Project'} saved successfully`);
+        setPendingChanges({});
+        console.log('✅ [v1.2] All changes saved successfully');
+        return true;
       } else {
         throw new Error('프로젝트 업데이트에 실패했습니다.');
       }
@@ -94,57 +109,73 @@ const ProjectEditPage_v1_2 = () => {
     } catch (error) {
       console.error('❌ [v1.2] Error saving project:', error);
       setSaveError(error.message || '저장 중 오류가 발생했습니다.');
+      return false;
     } finally {
-      setIsAutoSaving(false);
+      setIsSaving(false);
     }
-  }, [selectedProject, profile, updateProject]);
+  }, [selectedProject, profile, updateProject, pendingChanges, hasUnsavedChanges, basicInfo]);
 
-  // Stage별 저장 핸들러 - 완전한 stage 데이터 객체를 받음
+  // Stage별 변경사항 추적 - 즉시 저장하지 않고 pendingChanges에 누적
   const handleStageUpdate = useCallback((stageNumber, stageData) => {
     console.log(`🔄 [v1.2] handleStageUpdate called - Stage ${stageNumber}`, stageData);
     const stageKey = `stage${stageNumber}`;
-    const updates = { [stageKey]: stageData };
     
-    // Stage 1에서 modelName이 변경되었을 때 프로젝트 최상위 modelName도 업데이트
+    // pendingChanges에 변경사항 누적
+    setPendingChanges(prev => ({
+      ...prev,
+      [stageKey]: stageData
+    }));
+    
+    // Stage 1에서 modelName이 변경되었을 때 기본정보도 업데이트
     if (stageNumber === 1 && stageData.modelName !== selectedProject?.modelName) {
-      updates.modelName = stageData.modelName;
-      console.log(`🏷️ [v1.2] Model name updated: ${stageData.modelName}`);
+      console.log(`🏷️ [v1.2] Model name will be updated: ${stageData.modelName}`);
       
-      // 기본정보 상태도 업데이트
       setBasicInfo(prev => ({
+        ...prev,
+        modelName: stageData.modelName
+      }));
+      
+      // pendingChanges에 모델명 변경도 추가
+      setPendingChanges(prev => ({
         ...prev,
         modelName: stageData.modelName
       }));
     }
     
-    console.log(`🔄 [v1.2] Updates to send:`, updates);
-    handleSaveChanges(updates, `Stage ${stageNumber}`);
-  }, [handleSaveChanges, selectedProject?.modelName]);
+    setHasUnsavedChanges(true);
+    console.log('📝 [v1.2] Changes added to pending - will save on completion');
+  }, [selectedProject?.modelName]);
 
-  // 기본 정보 업데이트 핸들러
+  // 기본 정보 업데이트 핸들러 - 즉시 저장하지 않고 상태만 변경
   const handleBasicInfoUpdate = useCallback((field, value) => {
     setBasicInfo(prev => ({
       ...prev,
       [field]: value
     }));
     setHasUnsavedChanges(true);
-    
-    // 자동 저장
-    const updates = { [field]: value };
-    handleSaveChanges(updates, '기본 정보');
-  }, [handleSaveChanges]);
+    console.log(`📝 [v1.2] Basic info ${field} changed to:`, value, '(will save on completion)');
+  }, []);
 
-  // 완료 버튼 핸들러
-  const handleComplete = useCallback(() => {
-    if (selectedProject) {
-      navigate(`/projects/${selectedProject.id}`);
+  // 완료 버튼 핸들러 - 저장 후 이동
+  const handleComplete = useCallback(async () => {
+    if (!selectedProject) return;
+    
+    // 변경사항이 있으면 저장
+    if (hasUnsavedChanges || Object.keys(pendingChanges).length > 0) {
+      const saveSuccess = await handleSaveAllChanges();
+      if (!saveSuccess) {
+        alert('저장 중 오류가 발생했습니다. 다시 시도해주세요.');
+        return;
+      }
     }
-  }, [selectedProject, navigate]);
+    
+    navigate(`/projects/${selectedProject.id}`);
+  }, [selectedProject, navigate, hasUnsavedChanges, pendingChanges, handleSaveAllChanges]);
 
   // 취소 버튼 핸들러
   const handleCancel = useCallback(() => {
-    if (hasUnsavedChanges) {
-      const confirmed = window.confirm('저장하지 않은 변경사항이 있습니다. 정말 취소하시겠습니까?');
+    if (hasUnsavedChanges || Object.keys(pendingChanges).length > 0) {
+      const confirmed = window.confirm('저장하지 않은 변경사항이 있습니다. 저장하지 않고 취소하시겠습니까?');
       if (!confirmed) return;
     }
     if (selectedProject) {
@@ -152,7 +183,28 @@ const ProjectEditPage_v1_2 = () => {
     } else {
       navigate('/projects');
     }
-  }, [selectedProject, hasUnsavedChanges, navigate]);
+  }, [selectedProject, hasUnsavedChanges, pendingChanges, navigate]);
+
+  // 페이지 이동 전 저장 확인
+  const handlePageLeave = useCallback((targetPath) => {
+    if (hasUnsavedChanges || Object.keys(pendingChanges).length > 0) {
+      const shouldSave = window.confirm('저장하지 않은 변경사항이 있습니다. 저장하시겠습니까?');
+      if (shouldSave) {
+        handleSaveAllChanges().then((success) => {
+          if (success) {
+            navigate(targetPath);
+          }
+        });
+      } else {
+        const confirmLeave = window.confirm('정말로 저장하지 않고 이동하시겠습니까?');
+        if (confirmLeave) {
+          navigate(targetPath);
+        }
+      }
+    } else {
+      navigate(targetPath);
+    }
+  }, [hasUnsavedChanges, pendingChanges, handleSaveAllChanges, navigate]);
 
   // 프로젝트가 없는 경우
   if (projectId && projects.length > 0) {
@@ -209,33 +261,33 @@ const ProjectEditPage_v1_2 = () => {
         <nav className="flex" aria-label="Breadcrumb">
           <ol className="inline-flex items-center space-x-1 md:space-x-3">
             <li className="inline-flex items-center">
-              <Link 
-                to="/dashboard" 
+              <button 
+                onClick={() => handlePageLeave('/dashboard')} 
                 className="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600"
               >
                 📊 대시보드
-              </Link>
+              </button>
             </li>
             <li>
               <div className="flex items-center">
                 <span className="mx-2 text-gray-400">/</span>
-                <Link 
-                  to="/projects" 
+                <button 
+                  onClick={() => handlePageLeave('/projects')} 
                   className="text-sm font-medium text-gray-700 hover:text-blue-600"
                 >
                   📁 프로젝트
-                </Link>
+                </button>
               </div>
             </li>
             <li>
               <div className="flex items-center">
                 <span className="mx-2 text-gray-400">/</span>
-                <Link 
-                  to={`/projects/${projectId}`}
+                <button 
+                  onClick={() => handlePageLeave(`/projects/${projectId}`)}
                   className="text-sm font-medium text-gray-700 hover:text-blue-600"
                 >
                   {basicInfo.name || selectedProject?.name || `프로젝트 ${projectId}`}
-                </Link>
+                </button>
               </div>
             </li>
             <li aria-current="page">
@@ -256,11 +308,11 @@ const ProjectEditPage_v1_2 = () => {
               {lastSaved && (
                 <span>마지막 저장: {lastSaved.toLocaleTimeString()}</span>
               )}
-              {isAutoSaving && (
+              {isSaving && (
                 <span className="text-blue-600">저장 중...</span>
               )}
-              {hasUnsavedChanges && (
-                <span className="text-orange-600">저장되지 않은 변경사항</span>
+              {(hasUnsavedChanges || Object.keys(pendingChanges).length > 0) && (
+                <span className="text-orange-600 font-medium">저장되지 않은 변경사항</span>
               )}
             </div>
           </div>
@@ -268,22 +320,23 @@ const ProjectEditPage_v1_2 = () => {
             <Button
               onClick={handleCancel}
               variant="outline"
-              disabled={isAutoSaving}
+              disabled={isSaving}
             >
               취소
             </Button>
-            <Link
-              to={`/projects/${projectId}`}
+            <button
+              onClick={() => handlePageLeave(`/projects/${projectId}`)}
               className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+              disabled={isSaving}
             >
               👁️ 보기 모드
-            </Link>
+            </button>
             <Button
               onClick={handleComplete}
               className="bg-green-600 hover:bg-green-700"
-              disabled={isAutoSaving}
+              disabled={isSaving}
             >
-              완료
+              {isSaving ? '저장 중...' : '저장 및 완료'}
             </Button>
           </div>
         </div>
@@ -387,7 +440,7 @@ const ProjectEditPage_v1_2 = () => {
                 <ul className="space-y-1 ml-4">
                   <li>• 프로젝트 이름은 명확하고 구체적으로 작성하세요</li>
                   <li>• 모델명은 고유하게 설정하여 다른 프로젝트와 구분하세요</li>
-                  <li>• 변경사항은 자동으로 저장됩니다</li>
+                  <li>• 변경사항은 완료 버튼 클릭시에 저장됩니다</li>
                 </ul>
               </div>
             </div>
