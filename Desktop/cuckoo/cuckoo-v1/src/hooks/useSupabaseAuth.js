@@ -28,7 +28,13 @@ export const useSupabaseAuth = () => {
             team: userData.team || '일반팀'
           });
         } else if (isMounted) {
-          console.log('🚪 저장된 세션이 없음 - 로그인 필요');
+          console.log('🚪 저장된 세션이 없음 - 데모 계정 자동 로그인 시도');
+          
+          // 공개 배포에서는 데모 계정으로 자동 로그인
+          if (process.env.NODE_ENV === 'production' || window.location.hostname !== 'localhost') {
+            console.log('🌐 공개 배포 환경 - 데모 계정으로 자동 로그인');
+            autoSignInAsDemo();
+          }
         }
       } catch (error) {
         if (isMounted) {
@@ -216,6 +222,44 @@ export const useSupabaseAuth = () => {
     } catch (error) {
       console.error('❌ 프로필 업데이트 오류:', error);
       return { error };
+    }
+  };
+
+  // 데모 계정 자동 로그인
+  const autoSignInAsDemo = async () => {
+    try {
+      console.log('🎭 데모 계정 자동 로그인 시작...');
+      setLoading(true);
+      
+      // 데모 계정 정보 - 공개 배포용
+      const demoUser = {
+        id: 'demo_user_public',
+        email: 'demo@cuckoo.co.kr',
+        name: '데모 사용자',
+        role: 'user',
+        team: '데모팀'
+      };
+
+      setUser(demoUser);
+      setProfile({
+        id: demoUser.id,
+        name: demoUser.name,
+        email: demoUser.email,
+        role: demoUser.role,
+        team: demoUser.team
+      });
+
+      // 로컬스토리지에 저장 (다음 방문 시 빠른 로딩)
+      localStorage.setItem('currentUser', JSON.stringify(demoUser));
+      
+      console.log('✅ 데모 계정 자동 로그인 성공');
+      return { data: { user: demoUser }, error: null };
+    } catch (error) {
+      console.error('❌ 데모 계정 자동 로그인 오류:', error);
+      return { data: null, error };
+    } finally {
+      setLoading(false);
+      setIsInitialized(true);
     }
   };
 
