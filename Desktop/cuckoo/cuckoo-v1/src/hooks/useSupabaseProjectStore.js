@@ -406,13 +406,19 @@ export const SupabaseProjectProvider = ({ children }) => {
       // 2. 복원을 위해 완료 관련 필드 제거
       const { completed_at, completed_by, status, ...restoreData } = completedProjectData;
       
-      // 원본 ID로 복원하기 위해 ID 수정 (completed_xxx_xxx에서 원본 ID 추출)
-      let originalId = restoreData.id;
+      // 원본 ID 생성 (고유한 새 ID 생성)
+      let originalId;
       if (restoreData.id.startsWith('completed_')) {
+        // completed_xxx_timestamp 형식에서 원본 ID 추출
         const parts = restoreData.id.split('_');
-        if (parts.length >= 2) {
+        if (parts.length >= 3) {
           originalId = parts.slice(1, -1).join('_'); // 마지막 타임스탬프 부분 제거
+        } else {
+          originalId = `restored_${Date.now()}`; // fallback
         }
+      } else {
+        // completed_ 접두사가 없는 경우 (기존 완료 프로젝트)
+        originalId = `restored_${restoreData.id.split('_')[0]}_${Date.now()}`;
       }
 
       const restoredProject = {
