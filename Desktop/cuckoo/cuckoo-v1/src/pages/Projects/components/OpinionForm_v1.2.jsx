@@ -96,20 +96,19 @@ const OpinionForm_v1_2 = ({
     try {
       console.log('📤 [v1.2] Submitting opinion:', formData);
 
-      // 새 의견 객체 생성
+      // 새 의견 객체 생성 (Supabase 스키마에 맞춤)
       const newOpinion = {
-        id: `opinion_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        projectId: project.id,
-        projectName: project.name,
+        project_id: project.id,
         content: formData.content.trim(),
-        stage: formData.stage,
+        author_name: profile.name || profile.email,
+        stage: formData.stage === 'general' ? 1 : 
+               formData.stage === 'stage1' ? 1 :
+               formData.stage === 'stage2' ? 2 :
+               formData.stage === 'stage3' ? 3 : 1,
         priority: formData.priority,
         status: 'open',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        createdBy: profile.id,
-        createdByName: profile.name || profile.email,
-        replies: []
+        type: 'comment',
+        created_by: profile.id || profile.email
       };
 
       // 의견 추가
