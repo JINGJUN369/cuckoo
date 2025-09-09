@@ -192,6 +192,23 @@ export const SupabaseProjectProvider = ({ children }) => {
 
       console.log('✅ 프로젝트 로드 성공:', data?.length || 0);
       dispatch({ type: actionTypes.SET_PROJECTS, payload: data || [] });
+      
+      // 의견도 함께 로드 (대시보드에서 사용)
+      try {
+        const { data: opinionsData, error: opinionsError } = await supabase
+          .from('opinions')
+          .select('*')
+          .order('created_at', { ascending: false });
+          
+        if (!opinionsError && opinionsData) {
+          console.log('✅ 의견 로드 성공:', opinionsData.length);
+          dispatch({ type: actionTypes.SET_OPINIONS, payload: opinionsData });
+        }
+      } catch (opinionsError) {
+        console.log('⚠️ 의견 로드 실패 (테이블 없음):', opinionsError.message);
+        // 의견 테이블이 없어도 프로젝트는 정상 로드
+      }
+      
       dispatch({ type: actionTypes.SET_LOADING, payload: false });
     } catch (error) {
       console.error('❌ 프로젝트 로드 실패:', error);
@@ -476,6 +493,24 @@ export const SupabaseProjectProvider = ({ children }) => {
     }
   }, []);
 
+  // 모든 의견 불러오기 (대시보드용)
+  const loadAllOpinions = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('opinions')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      console.log('✅ 전체 의견 로드 성공:', data?.length || 0);
+      dispatch({ type: actionTypes.SET_OPINIONS, payload: data || [] });
+    } catch (error) {
+      console.error('❌ 전체 의견 로드 실패:', error);
+      dispatch({ type: actionTypes.SET_ERROR, payload: error.message });
+    }
+  }, []);
+
   const addOpinion = useCallback(async (opinionData) => {
     if (!user) {
       dispatch({ type: actionTypes.SET_ERROR, payload: '로그인이 필요합니다' });
@@ -656,6 +691,7 @@ export const SupabaseProjectProvider = ({ children }) => {
     
     // 의견 관련 액션
     loadOpinions,
+    loadAllOpinions,
     addOpinion,
     updateOpinion,
     deleteOpinion,
@@ -687,6 +723,7 @@ export const SupabaseProjectProvider = ({ children }) => {
     completeProject,
     restoreProject,
     loadOpinions,
+    loadAllOpinions,
     addOpinion,
     updateOpinion,
     deleteOpinion,
