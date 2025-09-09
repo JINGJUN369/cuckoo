@@ -9,6 +9,7 @@ import { useSupabaseAuth } from './hooks/useSupabaseAuth';
 import LoginPage_v1_2 from './pages/Auth/LoginPage_v1.2';
 import RegisterPage_v1_2 from './pages/Auth/RegisterPage_v1.2';
 import PasswordResetPage_v1_2 from './pages/Auth/PasswordResetPage_v1.2';
+import LandingPage from './pages/Landing/LandingPage';
 import DashboardPage_v1_2 from './pages/Dashboard/DashboardPage_v1.2';
 import ProjectListPage_v1_2 from './pages/Projects/ProjectListPage_v1.2';
 import ProjectDetailPage_v1_2 from './pages/Projects/ProjectDetailPage_v1.2';
@@ -63,8 +64,8 @@ function App_v1_2() {
               {/* Public Report - No authentication required */}
               <Route path="/public-report/:reportId" element={<PublicReportViewer />} />
               
-              {/* Root redirects to login */}
-              <Route path="/" element={<Navigate to="/login" replace />} />
+              {/* Root shows public landing page */}
+              <Route path="/" element={<LandingPage />} />
               
               <Route path="/dashboard" element={
                 <ProtectedRoute>
