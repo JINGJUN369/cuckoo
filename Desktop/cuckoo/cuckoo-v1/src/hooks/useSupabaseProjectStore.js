@@ -255,6 +255,7 @@ export const SupabaseProjectProvider = ({ children }) => {
       return null;
     }
 
+    console.log("🐛 [Debug] updateProject called with:", { projectId, updates, userId: user.id, userEmail: user.email });
     dispatch({ type: actionTypes.SET_LOADING, payload: true });
     
     try {
@@ -269,6 +270,10 @@ export const SupabaseProjectProvider = ({ children }) => {
         .select()
         .single();
 
+      if (error) {
+        console.error("🐛 [Debug] Supabase update error:", error);
+        throw error;
+      }
       if (error) throw error;
 
       console.log('✅ 프로젝트 업데이트 성공:', data);
