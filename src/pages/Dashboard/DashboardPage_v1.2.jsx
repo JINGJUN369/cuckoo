@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSupabaseProjectStore } from '../../hooks/useSupabaseProjectStore';
 import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
+import useWorkStatusStore from '../../hooks/useWorkStatusStore';
 import { getProjectProgress } from '../../types/project';
 import { calculateDDay } from '../../utils/dDayCalculator_v1.1';
 import NotificationSystem_v1_2 from '../../components/ui/NotificationSystem_v1.2';
@@ -20,6 +21,7 @@ const DashboardPage_v1_2 = () => {
   const navigate = useNavigate();
   const { user, profile } = useSupabaseAuth();
   const { projects, opinions } = useSupabaseProjectStore();
+  const { additionalWorks } = useWorkStatusStore();
 
   const isAdmin = profile?.role === 'admin';
   console.log('📊 [v1.2] DashboardPage rendered with Supabase');
@@ -190,6 +192,75 @@ const DashboardPage_v1_2 = () => {
       .slice(0, 5);
   }, [opinions]);
 
+  // 업무현황 통계 계산
+  const workStatusStats = useMemo(() => {
+    if (!additionalWorks || !Array.isArray(additionalWorks)) {
+      return {
+        totalWorks: 0,
+        completedWorks: 0,
+        inProgressWorks: 0,
+        onHoldWorks: 0,
+        highPriorityWorks: 0,
+        totalTasks: 0,
+        completedTasks: 0,
+        urgentWorks: [],
+        recentWorks: []
+      };
+    }
+
+    const totalWorks = additionalWorks.length;
+    const completedWorks = additionalWorks.filter(work => work.status === '종결').length;
+    const inProgressWorks = additionalWorks.filter(work => work.status === '진행중').length;
+    const onHoldWorks = additionalWorks.filter(work => work.status === '보류').length;
+    const highPriorityWorks = additionalWorks.filter(work => work.priority === '높음').length;
+    
+    const totalTasks = additionalWorks.reduce((sum, work) => 
+      sum + (work.detail_tasks?.length || 0), 0);
+    const completedTasks = additionalWorks.reduce((sum, work) => 
+      sum + (work.detail_tasks?.filter(task => task.status === '완료').length || 0), 0);
+
+    // 긴급한 업무: 마감일이 임박하고 아직 완료되지 않은 업무들
+    const today = new Date();
+    const urgentWorks = additionalWorks
+      .filter(work => {
+        if (work.status === '종결') return false;
+        if (!work.end_date) return false;
+        
+        const endDate = new Date(work.end_date);
+        const daysToDeadline = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+        
+        // 3일 이내 또는 이미 지난 마감일
+        return daysToDeadline <= 3;
+      })
+      .map(work => {
+        const endDate = new Date(work.end_date);
+        const daysToDeadline = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+        return {
+          ...work,
+          daysToDeadline,
+          isOverdue: daysToDeadline < 0
+        };
+      })
+      .sort((a, b) => a.daysToDeadline - b.daysToDeadline);
+
+    // 최근 업무 (5개)
+    const recentWorks = additionalWorks
+      .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
+      .slice(0, 5);
+
+    return {
+      totalWorks,
+      completedWorks,
+      inProgressWorks,
+      onHoldWorks,
+      highPriorityWorks,
+      totalTasks,
+      completedTasks,
+      urgentWorks,
+      recentWorks
+    };
+  }, [additionalWorks]);
+
   // 로딩 상태 처리는 제거 (현재 v1.2에서는 사용하지 않음)
 
   return (
@@ -205,8 +276,10 @@ const DashboardPage_v1_2 = () => {
         </p>
       </div>
 
-      {/* 통계 카드들 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+      {/* 통계 카드들 - 신제품관리 */}
+      <div className="mb-6">
+        <h2 className="text-lg font-medium text-gray-900 mb-4">📊 신제품관리 현황</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <div className="flex items-center">
             <div className="p-3 bg-blue-100 rounded-lg">
@@ -282,8 +355,83 @@ const DashboardPage_v1_2 = () => {
           </div>
         </div>
       </div>
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* 업무현황 통계 카드들 */}
+      <div className="mb-8">
+        <h2 className="text-lg font-medium text-gray-900 mb-4">📋 업무현황관리</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div className="bg-white p-6 rounded-lg shadow-sm border">
+            <div className="flex items-center">
+              <div className="p-3 bg-purple-100 rounded-lg">
+                <span className="text-2xl">📝</span>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">전체 업무</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {workStatusStats.totalWorks}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow-sm border">
+            <div className="flex items-center">
+              <div className="p-3 bg-green-100 rounded-lg">
+                <span className="text-2xl">✅</span>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">종결된 업무</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {workStatusStats.completedWorks}
+                </p>
+                <p className="text-xs text-gray-500">
+                  완료율 {workStatusStats.totalWorks > 0 ? Math.round((workStatusStats.completedWorks / workStatusStats.totalWorks) * 100) : 0}%
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow-sm border">
+            <div className="flex items-center">
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <span className="text-2xl">🔄</span>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">진행중인 업무</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {workStatusStats.inProgressWorks}
+                </p>
+                {workStatusStats.highPriorityWorks > 0 && (
+                  <p className="text-xs text-red-600">
+                    높은 우선순위: {workStatusStats.highPriorityWorks}개
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow-sm border">
+            <div className="flex items-center">
+              <div className="p-3 bg-indigo-100 rounded-lg">
+                <span className="text-2xl">📋</span>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">세부업무</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {workStatusStats.totalTasks}
+                </p>
+                <p className="text-xs text-gray-500">
+                  완료: {workStatusStats.completedTasks}개
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 첫 번째 행: 긴급한 프로젝트, 최근 활동, 의견 알림 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
         {/* 긴급한 프로젝트 */}
         <div className="bg-white rounded-lg shadow-sm border">
           <div className="p-6 border-b border-gray-200">
@@ -533,6 +681,127 @@ const DashboardPage_v1_2 = () => {
             </div>
           )}
         </div>
+      </div>
+
+      {/* 두 번째 행: 긴급한 업무, 최근 업무 활동, 빠른 작업 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* 긴급한 업무 */}
+        <div className="bg-white rounded-lg shadow-sm border">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">
+                🚨 긴급한 업무
+              </h2>
+              <Link 
+                to="/work-status" 
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                전체 보기 →
+              </Link>
+            </div>
+          </div>
+          
+          <div className="p-6">
+            {workStatusStats.urgentWorks.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">
+                마감일이 임박한 업무가 없습니다.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {workStatusStats.urgentWorks.slice(0, 3).map(work => (
+                  <div key={work.id} className={`p-3 rounded-lg border ${
+                    work.isOverdue ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'
+                  }`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-medium text-gray-900">
+                        {work.work_name}
+                      </h3>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        work.isOverdue 
+                          ? 'bg-red-100 text-red-800' 
+                          : work.daysToDeadline === 0
+                          ? 'bg-orange-100 text-orange-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {work.isOverdue 
+                          ? `${Math.abs(work.daysToDeadline)}일 지연` 
+                          : work.daysToDeadline === 0
+                          ? '오늘 마감'
+                          : `D-${work.daysToDeadline}`
+                        }
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      담당자: {work.work_owner} | 우선순위: {work.priority}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      마감일: {new Date(work.end_date).toLocaleDateString('ko-KR')}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 최근 업무 활동 */}
+        <div className="bg-white rounded-lg shadow-sm border">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">
+                🔄 최근 업무 활동
+              </h2>
+              <Link 
+                to="/work-status" 
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                전체 보기 →
+              </Link>
+            </div>
+          </div>
+          
+          <div className="p-6">
+            {workStatusStats.recentWorks.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">
+                최근 업무 활동이 없습니다.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {workStatusStats.recentWorks.map(work => (
+                  <div key={work.id} className="flex items-center space-x-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm ${
+                      work.status === '종결' ? 'bg-green-100' :
+                      work.status === '보류' ? 'bg-orange-100' :
+                      'bg-blue-100'
+                    }`}>
+                      {work.status === '종결' ? '✅' :
+                       work.status === '보류' ? '⏸️' : '🔄'}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-medium text-gray-900">
+                        {work.work_name}
+                      </h3>
+                      <div className="flex items-center space-x-2 text-xs text-gray-500">
+                        <span>담당자: {work.work_owner}</span>
+                        <span>•</span>
+                        <span className={`px-2 py-1 rounded-full ${
+                          work.status === '종결' ? 'bg-green-100 text-green-800' :
+                          work.status === '보류' ? 'bg-orange-100 text-orange-800' :
+                          'bg-blue-100 text-blue-800'
+                        }`}>
+                          {work.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        업데이트: {new Date(work.updated_at || work.created_at).toLocaleDateString('ko-KR')}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* 빠른 작업 */}
         <div className="bg-white rounded-lg shadow-sm border">
@@ -543,7 +812,7 @@ const DashboardPage_v1_2 = () => {
           </div>
           
           <div className="p-6">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
               <button
                 onClick={() => navigate('/projects')}
                 className="p-4 text-center bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
@@ -561,8 +830,16 @@ const DashboardPage_v1_2 = () => {
               </button>
               
               <button
-                onClick={() => navigate('/completed')}
+                onClick={() => navigate('/work-status')}
                 className="p-4 text-center bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
+              >
+                <div className="text-2xl mb-2">📋</div>
+                <div className="text-sm font-medium text-gray-900">업무현황</div>
+              </button>
+              
+              <button
+                onClick={() => navigate('/completed')}
+                className="p-4 text-center bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
               >
                 <div className="text-2xl mb-2">✅</div>
                 <div className="text-sm font-medium text-gray-900">완료 프로젝트</div>

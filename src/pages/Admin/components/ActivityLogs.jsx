@@ -60,7 +60,17 @@ const ActivityLogs = ({ logs, users }) => {
       USER_REJECTED: { icon: '❌', label: '사용자 거부', color: 'text-red-600 bg-red-50' },
       PROJECT_CREATE: { icon: '📝', label: '프로젝트 생성', color: 'text-indigo-600 bg-indigo-50' },
       PROJECT_UPDATE: { icon: '✏️', label: '프로젝트 수정', color: 'text-purple-600 bg-purple-50' },
-      PROJECT_DELETE: { icon: '🗑️', label: '프로젝트 삭제', color: 'text-red-600 bg-red-50' }
+      PROJECT_DELETE: { icon: '🗑️', label: '프로젝트 삭제', color: 'text-red-600 bg-red-50' },
+      // 업무현황 관련 액션들
+      WORK_CREATE: { icon: '📝', label: '업무 생성', color: 'text-cyan-600 bg-cyan-50' },
+      WORK_UPDATE: { icon: '✏️', label: '업무 수정', color: 'text-teal-600 bg-teal-50' },
+      WORK_DELETE: { icon: '🗑️', label: '업무 삭제', color: 'text-red-600 bg-red-50' },
+      WORK_COMPLETE: { icon: '✅', label: '업무 종결', color: 'text-green-600 bg-green-50' },
+      TASK_CREATE: { icon: '📋', label: '세부업무 생성', color: 'text-blue-600 bg-blue-50' },
+      TASK_UPDATE: { icon: '🔄', label: '세부업무 수정', color: 'text-indigo-600 bg-indigo-50' },
+      TASK_DELETE: { icon: '🗑️', label: '세부업무 삭제', color: 'text-red-600 bg-red-50' },
+      TASK_STATUS_CHANGE: { icon: '🔄', label: '업무 상태 변경', color: 'text-yellow-600 bg-yellow-50' },
+      PROGRESS_UPDATE: { icon: '📊', label: '진행현황 업데이트', color: 'text-purple-600 bg-purple-50' }
     };
     
     return actionMap[action] || { icon: '📋', label: action, color: 'text-gray-600 bg-gray-50' };
@@ -109,6 +119,8 @@ const ActivityLogs = ({ logs, users }) => {
             { key: 'login', label: '로그인/아웃' },
             { key: 'user', label: '사용자 관리' },
             { key: 'project', label: '프로젝트' },
+            { key: 'work', label: '업무현황' },
+            { key: 'task', label: '세부업무' },
             { key: 'password', label: '비밀번호' }
           ].map(({ key, label }) => (
             <button

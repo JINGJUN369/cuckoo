@@ -49,6 +49,79 @@ const WorkStatusManagePage = () => {
     status: '진행중',
     priority: '보통'
   });
+
+  // 현재 로그인 사용자 이름 가져오기
+  const getCurrentUserName = () => {
+    if (profile?.name) return profile.name;
+    if (user?.email) return user.email;
+    const currentUserProfile = users.find(u => u.id === user?.id || u.email === user?.email);
+    return currentUserProfile?.name || user?.email || '알 수 없음';
+  };
+
+  // 업무 종결/삭제 권한 확인 함수
+  const canDeleteOrCompleteWork = (work) => {
+    if (!user) return false;
+    
+    // 관리자는 모든 권한을 가짐
+    if (profile?.role === 'admin') return true;
+    
+    // 담당자(work_owner)는 자신의 업무에 대한 권한을 가짐
+    const currentUserName = getCurrentUserName();
+    return work.work_owner === currentUserName;
+  };
+
+  // 세부업무 삭제 권한 확인 함수
+  const canDeleteDetailTask = (work, task) => {
+    if (!user) return false;
+    
+    // 관리자는 모든 권한을 가짐
+    if (profile?.role === 'admin') return true;
+    
+    const currentUserName = getCurrentUserName();
+    
+    // 업무 담당자(work_owner)는 해당 업무의 모든 세부업무를 삭제할 수 있음
+    if (work.work_owner === currentUserName) return true;
+    
+    // 세부업무 담당자(assigned_to)는 자신의 세부업무만 삭제할 수 있음
+    return task.assignee === currentUserName;
+  };
+
+  // 노션 스타일 색상 가져오기 (상태와 우선순위에 따라)
+  const getNotionStyleColors = (work) => {
+    const { status, priority } = work;
+    
+    // 상태별 색상
+    if (status === '종결') {
+      return {
+        bg: 'bg-gradient-to-r from-green-500 to-green-600',
+        text: 'text-green-100'
+      };
+    } else if (status === '보류') {
+      return {
+        bg: 'bg-gradient-to-r from-orange-500 to-orange-600',
+        text: 'text-orange-100'
+      };
+    }
+    
+    // 우선순위별 색상
+    if (priority === '높음') {
+      return {
+        bg: 'bg-gradient-to-r from-red-500 to-red-600',
+        text: 'text-red-100'
+      };
+    } else if (priority === '낮음') {
+      return {
+        bg: 'bg-gradient-to-r from-blue-500 to-blue-600',
+        text: 'text-blue-100'
+      };
+    }
+    
+    // 기본 색상 (노션 스타일 회색)
+    return {
+      bg: 'bg-gradient-to-r from-slate-600 to-slate-700',
+      text: 'text-slate-200'
+    };
+  };
   const [newTaskData, setNewTaskData] = useState({
     task_name: '',
     description: '',
@@ -94,7 +167,9 @@ const WorkStatusManagePage = () => {
   const handleCreateWork = async (e) => {
     e.preventDefault();
     try {
-      await createAdditionalWork(newWorkData);
+      // work_owner는 서버에서 자동으로 설정되므로 제거
+      const { work_owner, ...workDataToSubmit } = newWorkData;
+      await createAdditionalWork(workDataToSubmit);
       setShowCreateWorkModal(false);
       setNewWorkData({
         work_name: '',
@@ -351,18 +426,82 @@ const WorkStatusManagePage = () => {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <span className="text-2xl">👥</span>
+              <span className="text-2xl">👤</span>
             </div>
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">참여자</p>
+              <p className="text-sm font-medium text-gray-500">활성 담당자</p>
               <p className="text-2xl font-semibold text-purple-600">
-                {new Set(additionalWorks.flatMap(work => 
-                  [work.work_owner, ...(work.detail_tasks?.map(task => task.assignee).filter(Boolean) || [])]
-                )).size}
+                {new Set(additionalWorks
+                  .filter(work => work.status !== '종결')
+                  .map(work => work.work_owner)
+                  .filter(Boolean)
+                ).size}명
               </p>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* 담당자별 현황 */}
+      <div className="bg-white rounded-lg shadow mb-6 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <span className="mr-2">👥</span>
+          담당자별 업무 현황
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {(() => {
+            const ownerStats = {};
+            additionalWorks.forEach(work => {
+              if (work.work_owner) {
+                if (!ownerStats[work.work_owner]) {
+                  ownerStats[work.work_owner] = {
+                    total: 0,
+                    inProgress: 0,
+                    completed: 0
+                  };
+                }
+                ownerStats[work.work_owner].total += 1;
+                
+                if (work.status === '종결') {
+                  ownerStats[work.work_owner].completed += 1;
+                } else {
+                  ownerStats[work.work_owner].inProgress += 1;
+                }
+              }
+            });
+
+            return Object.entries(ownerStats).map(([owner, stats]) => (
+              <div key={owner} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <div className="flex items-center mb-2">
+                  <span className="text-sm font-medium text-gray-900">{owner}</span>
+                </div>
+                <div className="space-y-1 text-xs text-gray-600">
+                  <div className="flex justify-between">
+                    <span>전체:</span>
+                    <span className="font-medium">{stats.total}개</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>진행중:</span>
+                    <span className="font-medium text-blue-600">{stats.inProgress}개</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>완료:</span>
+                    <span className="font-medium text-green-600">{stats.completed}개</span>
+                  </div>
+                </div>
+                <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${stats.total > 0 ? (stats.completed / stats.total) * 100 : 0}%` }}
+                  ></div>
+                </div>
+              </div>
+            ));
+          })()}
+        </div>
+        {additionalWorks.length === 0 && (
+          <p className="text-gray-500 text-center py-8">등록된 업무가 없습니다.</p>
+        )}
       </div>
 
       {/* 업무 목록 */}
@@ -380,10 +519,12 @@ const WorkStatusManagePage = () => {
             </button>
           </div>
         ) : (
-          additionalWorks.map((work) => (
+          additionalWorks.map((work) => {
+            const colors = getNotionStyleColors(work);
+            return (
             <div key={work.id} className="bg-white rounded-lg shadow overflow-hidden">
               {/* 업무 헤더 */}
-              <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-6">
+              <div className={`${colors.bg} text-white p-6`}>
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-3">
@@ -392,7 +533,7 @@ const WorkStatusManagePage = () => {
                       {/* 진행률 표시 */}
                       <div className="flex items-center space-x-3">
                         <div className="text-right">
-                          <div className="text-sm text-indigo-100">진행률</div>
+                          <div className={`text-sm ${colors.text}`}>진행률</div>
                           <div className="text-lg font-bold">{calculateWorkProgress(work)}%</div>
                         </div>
                         <div className="w-20 h-2 bg-white bg-opacity-30 rounded-full overflow-hidden">
@@ -404,7 +545,7 @@ const WorkStatusManagePage = () => {
                       </div>
                     </div>
                     
-                    <div className="flex flex-wrap gap-4 text-indigo-100">
+                    <div className={`flex flex-wrap gap-4 ${colors.text}`}>
                       <div className="flex items-center">
                         <span className="mr-2">👤</span>
                         <span>{work.work_owner}</span>
@@ -452,26 +593,30 @@ const WorkStatusManagePage = () => {
                           <span className="mr-2">✏️</span>
                           업무 수정
                         </button>
-                        <button
-                          onClick={() => handleCompleteWork(work.id)}
-                          className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 flex items-center"
-                        >
-                          <span className="mr-2">✅</span>
-                          업무 종결
-                        </button>
-                        <button
-                          onClick={() => handleDeleteWork(work.id)}
-                          className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 rounded-b-lg flex items-center"
-                        >
-                          <span className="mr-2">🗑️</span>
-                          업무 삭제
-                        </button>
+                        {canDeleteOrCompleteWork(work) && (
+                          <>
+                            <button
+                              onClick={() => handleCompleteWork(work.id)}
+                              className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 flex items-center"
+                            >
+                              <span className="mr-2">✅</span>
+                              업무 종결
+                            </button>
+                            <button
+                              onClick={() => handleDeleteWork(work.id)}
+                              className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 rounded-b-lg flex items-center"
+                            >
+                              <span className="mr-2">🗑️</span>
+                              업무 삭제
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
                 </div>
                 {work.description && (
-                  <p className="mt-3 text-indigo-100">{work.description}</p>
+                  <p className={`mt-3 ${colors.text}`}>{work.description}</p>
                 )}
               </div>
 
@@ -508,14 +653,16 @@ const WorkStatusManagePage = () => {
                               <option value="피드백">피드백</option>
                             </select>
                             
-                            {/* 삭제 버튼 */}
-                            <button
-                              onClick={() => deleteDetailTask(task.id)}
-                              className="text-gray-400 hover:text-red-500 transition-colors"
-                              title="세부업무 삭제"
-                            >
-                              🗑️
-                            </button>
+                            {/* 삭제 버튼 - 권한이 있는 사용자만 표시 */}
+                            {canDeleteDetailTask(work, task) && (
+                              <button
+                                onClick={() => deleteDetailTask(task.id)}
+                                className="text-gray-400 hover:text-red-500 transition-colors"
+                                title="세부업무 삭제"
+                              >
+                                🗑️
+                              </button>
+                            )}
                           </div>
                         </div>
                         
@@ -596,7 +743,8 @@ const WorkStatusManagePage = () => {
                 )}
               </div>
             </div>
-          ))
+          );
+          })
         )}
       </div>
 
@@ -627,14 +775,14 @@ const WorkStatusManagePage = () => {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">담당자 *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newWorkData.work_owner}
-                    onChange={(e) => setNewWorkData({...newWorkData, work_owner: e.target.value})}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="담당자명을 입력하세요"
-                  />
+                  <div className="w-full p-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-700">
+                    <div className="flex items-center">
+                      <span className="mr-2">👤</span>
+                      <span>{getCurrentUserName()}</span>
+                      <span className="ml-2 text-sm text-gray-500">(로그인 사용자)</span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">담당자는 로그인된 사용자로 자동 설정됩니다.</p>
                 </div>
                 
                 <div>

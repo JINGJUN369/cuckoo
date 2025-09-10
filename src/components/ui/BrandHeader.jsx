@@ -20,41 +20,33 @@ const BrandHeader = ({ showNav = true, currentPage, setCurrentPage, onToggleOnli
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           {/* 브랜드 로고 */}
           <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">쿠쿠</span>
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center">
+              <img 
+                src="https://i.namu.wiki/i/1jTJqFfC2KqSgtm41ABFwXxuErha_YzMH8AwI7zzNKAry4zX1eUO1lst1Izh_MMbGdUN87UkvsSIZ53kKpFqCByLxXvzTxM8yOhiRML2jPlx_LXbdmOKsvppR0YtB9FL-ntb7KZA0v6Ij880-o4kQQ.svg"
+                alt="쿠쿠 로고"
+                className="w-10 h-10 rounded-lg object-contain"
+                onError={(e) => {
+                  console.error('로고 이미지 로드 실패:', e.target.src);
+                  e.target.style.display = 'none';
+                  e.target.parentNode.innerHTML = '<span class="text-blue-600 font-bold text-sm">쿠쿠</span>';
+                }}
+                onLoad={() => {
+                  console.log('로고 이미지 로드 성공');
+                }}
+              />
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">고객만족팀</h1>
-              <p className="text-sm text-gray-500">제품 진척률 관리 시스템</p>
+              <h1 className="text-xl font-semibold text-gray-900">쿠쿠 업무관리 시스템</h1>
+              <p className="text-sm text-gray-500">고객만족팀</p>
             </div>
           </div>
           
           {/* 네비게이션 및 사용자 메뉴 */}
           {showNav && user && (
             <div className="flex items-center space-x-6">
-              {/* 네비게이션 메뉴 */}
-              <nav className="flex items-center space-x-6">
-                <button 
-                  onClick={() => setCurrentPage && setCurrentPage('projects')}
-                  className={`text-sm font-medium transition-colors ${
-                    currentPage === 'projects'
-                      ? 'text-blue-600'
-                      : 'text-gray-700 hover:text-gray-900'
-                  }`}
-                >
-                  📊 신제품관리
-                </button>
-                <button 
-                  onClick={() => setCurrentPage && setCurrentPage('work-status')}
-                  className={`text-sm font-medium transition-colors ${
-                    currentPage === 'work-status'
-                      ? 'text-blue-600'
-                      : 'text-gray-700 hover:text-gray-900'
-                  }`}
-                >
-                  📋 업무현황관리
-                </button>
-                {profile?.role === 'admin' && (
+              {/* 네비게이션 메뉴 - 관리자 메뉴만 유지 */}
+              {profile?.role === 'admin' && (
+                <nav className="flex items-center space-x-6">
                   <button 
                     onClick={() => setCurrentPage && setCurrentPage('admin')}
                     className={`text-sm font-medium transition-colors ${
@@ -65,8 +57,8 @@ const BrandHeader = ({ showNav = true, currentPage, setCurrentPage, onToggleOnli
                   >
                     👥 관리자
                   </button>
-                )}
-              </nav>
+                </nav>
+              )}
               
               {/* 온라인 사용자 표시기 - v1.1에서는 임시 비활성화 */}
               {/* <OnlineUsersIndicator onToggleDetails={onToggleOnlineUsers} /> */}

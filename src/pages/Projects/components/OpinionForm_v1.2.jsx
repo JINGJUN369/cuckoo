@@ -24,9 +24,9 @@ const OpinionForm_v1_2 = ({
 
   // 폼 상태 관리
   const [formData, setFormData] = useState({
-    content: '',
+    message: '',
     stage: initialStage || 'general',
-    priority: 'normal'
+    priority: 'medium'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -44,9 +44,8 @@ const OpinionForm_v1_2 = ({
   // Priority 옵션 정의
   const priorityOptions = [
     { value: 'low', label: '낮음', color: 'text-gray-600' },
-    { value: 'normal', label: '보통', color: 'text-blue-600' },
-    { value: 'high', label: '높음', color: 'text-orange-600' },
-    { value: 'critical', label: '긴급', color: 'text-red-600' }
+    { value: 'medium', label: '보통', color: 'text-blue-600' },
+    { value: 'high', label: '높음', color: 'text-orange-600' }
   ];
 
   // 입력값 변경 핸들러
@@ -64,17 +63,17 @@ const OpinionForm_v1_2 = ({
 
   // 폼 유효성 검사
   const validateForm = useCallback(() => {
-    if (!formData.content.trim()) {
+    if (!formData.message.trim()) {
       setError('의견 내용을 입력해주세요.');
       return false;
     }
 
-    if (formData.content.trim().length < 10) {
+    if (formData.message.trim().length < 10) {
       setError('의견은 최소 10자 이상 입력해주세요.');
       return false;
     }
 
-    if (formData.content.trim().length > 1000) {
+    if (formData.message.trim().length > 1000) {
       setError('의견은 최대 1000자까지 입력 가능합니다.');
       return false;
     }
@@ -98,18 +97,19 @@ const OpinionForm_v1_2 = ({
 
       // 새 의견 객체 생성
       const newOpinion = {
-        id: `opinion_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        projectId: project.id,
-        projectName: project.name,
-        content: formData.content.trim(),
-        stage: formData.stage,
-        priority: formData.priority,
+        project_id: project.id,
+        project_is_completed: false, 
+        author_name: profile.name || profile.email,
+        author_team: profile.team || '일반팀',
+        message: formData.message.trim(),
+        stage: formData.stage === 'stage1' ? 1 : formData.stage === 'stage2' ? 2 : formData.stage === 'stage3' ? 3 : 1,
         status: 'open',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        createdBy: profile.id,
-        createdByName: profile.name || profile.email,
-        replies: []
+        priority: formData.priority,
+        reply: null,
+        created_by: profile.id,
+        updated_by: profile.id,
+        migrated_from_local: false,
+        local_created_at: null
       };
 
       // 의견 추가
@@ -117,9 +117,9 @@ const OpinionForm_v1_2 = ({
 
       // 성공 후 처리
       setFormData({
-        content: '',
+        message: '',
         stage: initialStage || 'general',
-        priority: 'normal'
+        priority: 'medium'
       });
 
       // 부모 컴포넌트에 알림
@@ -207,8 +207,8 @@ const OpinionForm_v1_2 = ({
             의견 내용 *
           </label>
           <textarea
-            value={formData.content}
-            onChange={(e) => handleInputChange('content', e.target.value)}
+            value={formData.message}
+            onChange={(e) => handleInputChange('message', e.target.value)}
             placeholder={placeholder}
             rows={4}
             className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 resize-vertical"
@@ -216,7 +216,7 @@ const OpinionForm_v1_2 = ({
             maxLength={1000}
           />
           <div className="mt-1 text-right text-xs text-gray-500">
-            {formData.content.length}/1000
+            {formData.message.length}/1000
           </div>
         </div>
 
@@ -233,9 +233,9 @@ const OpinionForm_v1_2 = ({
             type="button"
             variant="outline"
             onClick={() => setFormData({
-              content: '',
+              message: '',
               stage: initialStage || 'general',
-              priority: 'normal'
+              priority: 'medium'
             })}
             disabled={isSubmitting}
           >
@@ -243,7 +243,7 @@ const OpinionForm_v1_2 = ({
           </Button>
           <Button
             type="submit"
-            disabled={isSubmitting || !formData.content.trim()}
+            disabled={isSubmitting || !formData.message.trim()}
             className="bg-blue-600 hover:bg-blue-700"
           >
             {isSubmitting ? '등록 중...' : '의견 등록'}

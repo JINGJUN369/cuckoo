@@ -122,9 +122,13 @@ export const useSupabaseAuth = () => {
         throw new Error('관리자 승인 대기 중입니다. 승인 후 다시 로그인해주세요.');
       }
 
-      // 비밀번호 검증 건너뛰기 (데모용)
-      console.log('✅ 사용자 확인 및 승인 완료:', data.email);
-      console.log('🔑 비밀번호 검증 건너뛰기 (데모 모드)');
+      // 비밀번호 검증
+      if (data.password_hash !== password) {
+        console.error('❌ 비밀번호 불일치');
+        throw new Error('비밀번호가 올바르지 않습니다.');
+      }
+      
+      console.log('✅ 사용자 확인 및 비밀번호 검증 완료:', data.email);
 
       // 사용자 정보 설정
       const userData = {
@@ -212,7 +216,7 @@ export const useSupabaseAuth = () => {
       const generateUUID = () => {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
           const r = Math.random() * 16 | 0;
-          const v = c == 'x' ? r : (r & 0x3 | 0x8);
+          const v = c === 'x' ? r : ((r & 0x3) | 0x8);
           return v.toString(16);
         });
       };
@@ -223,7 +227,7 @@ export const useSupabaseAuth = () => {
         email,
         team: team || '일반팀',
         role: 'user',
-        password_hash: 'temp_hash', // 실제로는 해시 필요
+        password_hash: password, // 비밀번호 저장 (실제 프로덕션에서는 해시 필요)
         status: 'pending', // 관리자 승인 대기 상태
         must_change_password: false,
         created_at: new Date().toISOString()
@@ -259,7 +263,7 @@ export const useSupabaseAuth = () => {
       const { error } = await supabase
         .from('users')
         .update({ 
-          password_hash: 'new_hash', // 실제로는 해시 필요
+          password_hash: newPassword, // 새 비밀번호 저장 (실제 프로덕션에서는 해시 필요)
           must_change_password: false,
           last_password_change: new Date().toISOString()
         })

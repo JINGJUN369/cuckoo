@@ -67,15 +67,37 @@ const WorkStatusCalendar = () => {
     const current = new Date(startDate);
 
     for (let i = 0; i < 42; i++) {
-      const dayEvents = additionalWorks.filter(work => {
+      const currentDateStr = current.toISOString().split('T')[0];
+      
+      // 프로젝트 기간 이벤트
+      const projectEvents = additionalWorks.filter(work => {
         const startDate = new Date(work.start_date);
         const endDate = new Date(work.end_date);
         return current >= startDate && current <= endDate;
-      });
+      }).map(work => ({ ...work, eventType: 'project' }));
+
+      // 세부업무 마감일 이벤트
+      const detailEvents = additionalWorks
+        .flatMap(work => 
+          (work.detail_tasks || [])
+            .filter(task => task.due_date === currentDateStr)
+            .map(task => ({
+              id: `${work.id}_${task.id}`,
+              work_name: task.task_name,
+              work_owner: task.assigned_to || work.work_owner,
+              department: work.department,
+              parent_work: work,
+              eventType: 'detail',
+              end_date: task.due_date,
+              start_date: task.due_date
+            }))
+        );
+
+      const allEvents = [...projectEvents, ...detailEvents];
 
       days.push({
         date: new Date(current),
-        events: dayEvents,
+        events: allEvents,
         isCurrentMonth: current.getMonth() === month,
         isToday: current.toDateString() === new Date().toDateString()
       });
@@ -98,16 +120,64 @@ const WorkStatusCalendar = () => {
     setCurrentDate(new Date());
   };
 
-  // 이벤트 색상 결정
-  const getEventColor = (work) => {
+  // 프로젝트별 색상 팔레트 (노션 스타일)
+  const projectColorPalettes = [
+    { light: 'bg-blue-200', medium: 'bg-blue-400', dark: 'bg-blue-600', text: 'text-blue-800' },
+    { light: 'bg-green-200', medium: 'bg-green-400', dark: 'bg-green-600', text: 'text-green-800' },
+    { light: 'bg-purple-200', medium: 'bg-purple-400', dark: 'bg-purple-600', text: 'text-purple-800' },
+    { light: 'bg-pink-200', medium: 'bg-pink-400', dark: 'bg-pink-600', text: 'text-pink-800' },
+    { light: 'bg-orange-200', medium: 'bg-orange-400', dark: 'bg-orange-600', text: 'text-orange-800' },
+    { light: 'bg-teal-200', medium: 'bg-teal-400', dark: 'bg-teal-600', text: 'text-teal-800' },
+    { light: 'bg-indigo-200', medium: 'bg-indigo-400', dark: 'bg-indigo-600', text: 'text-indigo-800' },
+    { light: 'bg-red-200', medium: 'bg-red-400', dark: 'bg-red-600', text: 'text-red-800' },
+    { light: 'bg-yellow-200', medium: 'bg-yellow-400', dark: 'bg-yellow-600', text: 'text-yellow-800' },
+    { light: 'bg-cyan-200', medium: 'bg-cyan-400', dark: 'bg-cyan-600', text: 'text-cyan-800' },
+  ];
+
+  // 프로젝트 ID를 기반으로 색상 팔레트 할당
+  const getProjectColorPalette = (workId) => {
+    const hash = workId.split('').reduce((acc, char) => {
+      return char.charCodeAt(0) + ((acc << 5) - acc);
+    }, 0);
+    const index = Math.abs(hash) % projectColorPalettes.length;
+    return projectColorPalettes[index];
+  };
+
+  // 이벤트 색상 및 타입 결정
+  const getEventStyle = (work, eventType = 'project') => {
+    const palette = getProjectColorPalette(work.id);
     const today = new Date();
     const endDate = new Date(work.end_date);
     const daysLeft = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
 
-    if (daysLeft < 0) return 'bg-red-500'; // 지연
-    if (daysLeft === 0) return 'bg-orange-500'; // 오늘 마감
-    if (daysLeft <= 3) return 'bg-yellow-500'; // 임박
-    return 'bg-blue-500'; // 일반
+    // 긴급도에 따른 색상 조정
+    let colorIntensity = 'medium';
+    if (daysLeft < 0) colorIntensity = 'dark'; // 지연 - 진한 색
+    else if (daysLeft <= 3) colorIntensity = 'dark'; // 임박 - 진한 색
+    else colorIntensity = 'light'; // 일반 - 연한 색
+
+    // 이벤트 타입별 색상 강도 조정
+    if (eventType === 'project') {
+      // 프로젝트 전체 기간: 연한 색상
+      return {
+        bg: palette.light,
+        border: palette.medium,
+        text: palette.text
+      };
+    } else if (eventType === 'detail') {
+      // 상세 일정 (하루하루): 진한 색상
+      return {
+        bg: palette.dark,
+        border: palette.dark,
+        text: 'text-white'
+      };
+    }
+
+    return {
+      bg: palette[colorIntensity],
+      border: palette.dark,
+      text: colorIntensity === 'dark' ? 'text-white' : palette.text
+    };
   };
 
   if (loading) {
@@ -211,20 +281,20 @@ const WorkStatusCalendar = () => {
           {/* 범례 */}
           <div className="flex items-center space-x-4 text-sm">
             <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-              <span>지연</span>
+              <div className="w-4 h-3 bg-blue-200 rounded border-l-2 border-blue-400"></div>
+              <span>프로젝트 기간</span>
             </div>
             <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-              <span>오늘 마감</span>
+              <div className="w-4 h-3 bg-green-600 rounded"></div>
+              <span>상세 일정</span>
             </div>
             <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-              <span>임박</span>
+              <div className="w-4 h-3 bg-red-600 rounded"></div>
+              <span>긴급/지연</span>
             </div>
             <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-              <span>일반</span>
+              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-200 to-purple-200"></div>
+              <span>프로젝트별 색상</span>
             </div>
           </div>
         </div>
@@ -267,15 +337,24 @@ const WorkStatusCalendar = () => {
 
                 {/* 이벤트들 */}
                 <div className="space-y-1">
-                  {day.events.slice(0, 3).map((work, eventIndex) => (
+                  {day.events.slice(0, 3).map((event, eventIndex) => {
+                    const style = getEventStyle(event.parent_work || event, event.eventType);
+                    const isDetailEvent = event.eventType === 'detail';
+                    
+                    return (
                     <div
-                      key={work.id}
-                      className={`text-xs px-2 py-1 rounded text-white truncate cursor-pointer ${getEventColor(work)}`}
-                      title={`${work.work_name} (${work.department} - ${work.work_owner})`}
+                      key={event.id}
+                      className={`text-xs px-2 py-1 rounded truncate cursor-pointer ${style.bg} ${style.text} ${
+                        isDetailEvent 
+                          ? 'border border-white shadow-sm font-medium' 
+                          : `border-l-2 ${style.border.replace('bg-', 'border-')}`
+                      }`}
+                      title={`${event.work_name} ${isDetailEvent ? '(세부업무)' : '(프로젝트)'} - ${event.department} - ${event.work_owner}`}
                     >
-                      {work.work_name}
+                      {isDetailEvent ? '📌 ' : ''}{event.work_name}
                     </div>
-                  ))}
+                    );
+                  })}
                   {day.events.length > 3 && (
                     <div className="text-xs text-gray-500 px-2">
                       +{day.events.length - 3}개 더

@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
 import { useSupabaseProjectStore } from '../../hooks/useSupabaseProjectStore';
+import useWorkStatusStore from '../../hooks/useWorkStatusStore';
 import { getProjectProgress } from '../../types/project';
 import { Button } from '../../components/ui';
 
@@ -22,6 +23,11 @@ const AdminDashboardPage = () => {
     loading, 
     error 
   } = useSupabaseProjectStore();
+  
+  const { 
+    additionalWorks,
+    loading: workStatusLoading
+  } = useWorkStatusStore();
 
   // 통계 데이터 계산
   const stats = useMemo(() => {
@@ -45,6 +51,27 @@ const AdminDashboardPage = () => {
       ? Math.round(progressStats.reduce((sum, p) => sum + (p?.overall || 0), 0) / progressStats.length)
       : 0;
 
+    // 업무현황 통계 계산
+    const workStats = additionalWorks ? {
+      totalWorks: additionalWorks.length,
+      completedWorks: additionalWorks.filter(work => work.status === '종결').length,
+      inProgressWorks: additionalWorks.filter(work => work.status === '진행중').length,
+      onHoldWorks: additionalWorks.filter(work => work.status === '보류').length,
+      highPriorityWorks: additionalWorks.filter(work => work.priority === '높음').length,
+      totalTasks: additionalWorks.reduce((sum, work) => 
+        sum + (work.detail_tasks?.length || 0), 0),
+      completedTasks: additionalWorks.reduce((sum, work) => 
+        sum + (work.detail_tasks?.filter(task => task.status === '완료').length || 0), 0),
+    } : {
+      totalWorks: 0,
+      completedWorks: 0,
+      inProgressWorks: 0,
+      onHoldWorks: 0,
+      highPriorityWorks: 0,
+      totalTasks: 0,
+      completedTasks: 0,
+    };
+
     return {
       totalProjects,
       totalCompleted,
@@ -53,8 +80,9 @@ const AdminDashboardPage = () => {
       stage1Complete: progressStats.filter(p => p?.stages?.stage1 === 100).length,
       stage2Complete: progressStats.filter(p => p?.stages?.stage2 === 100).length,
       stage3Complete: progressStats.filter(p => p?.stages?.stage3 === 100).length,
+      ...workStats,
     };
-  }, [projects, completedProjects, loading]);
+  }, [projects, completedProjects, loading, additionalWorks]);
 
   if (loading) {
     return (
@@ -96,7 +124,11 @@ const AdminDashboardPage = () => {
 
         {/* 통계 카드 */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <>
+            {/* 프로젝트 통계 */}
+            <div className="mb-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">📊 프로젝트 현황</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="bg-white overflow-hidden shadow rounded-lg">
               <div className="p-5">
                 <div className="flex items-center">
@@ -184,7 +216,191 @@ const AdminDashboardPage = () => {
                 </div>
               </div>
             </div>
-          </div>
+              </div>
+            </div>
+
+            {/* 업무현황 통계 */}
+            <div className="mb-8">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">📋 업무현황 관리</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="bg-white overflow-hidden shadow rounded-lg">
+                  <div className="p-5">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
+                          <span className="text-white text-sm font-medium">📝</span>
+                        </div>
+                      </div>
+                      <div className="ml-5 w-0 flex-1">
+                        <dl>
+                          <dt className="text-sm font-medium text-gray-500 truncate">
+                            전체 업무
+                          </dt>
+                          <dd className="text-lg font-medium text-gray-900">
+                            {stats.totalWorks}
+                          </dd>
+                        </dl>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white overflow-hidden shadow rounded-lg">
+                  <div className="p-5">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
+                          <span className="text-white text-sm font-medium">✅</span>
+                        </div>
+                      </div>
+                      <div className="ml-5 w-0 flex-1">
+                        <dl>
+                          <dt className="text-sm font-medium text-gray-500 truncate">
+                            종결된 업무
+                          </dt>
+                          <dd className="text-lg font-medium text-gray-900">
+                            {stats.completedWorks}
+                          </dd>
+                        </dl>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white overflow-hidden shadow rounded-lg">
+                  <div className="p-5">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
+                          <span className="text-white text-sm font-medium">🔄</span>
+                        </div>
+                      </div>
+                      <div className="ml-5 w-0 flex-1">
+                        <dl>
+                          <dt className="text-sm font-medium text-gray-500 truncate">
+                            진행중인 업무
+                          </dt>
+                          <dd className="text-lg font-medium text-gray-900">
+                            {stats.inProgressWorks}
+                          </dd>
+                        </dl>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white overflow-hidden shadow rounded-lg">
+                  <div className="p-5">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-red-500 rounded-md flex items-center justify-center">
+                          <span className="text-white text-sm font-medium">🚨</span>
+                        </div>
+                      </div>
+                      <div className="ml-5 w-0 flex-1">
+                        <dl>
+                          <dt className="text-sm font-medium text-gray-500 truncate">
+                            높은 우선순위
+                          </dt>
+                          <dd className="text-lg font-medium text-gray-900">
+                            {stats.highPriorityWorks}
+                          </dd>
+                        </dl>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white overflow-hidden shadow rounded-lg">
+                  <div className="p-5">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-indigo-500 rounded-md flex items-center justify-center">
+                          <span className="text-white text-sm font-medium">📋</span>
+                        </div>
+                      </div>
+                      <div className="ml-5 w-0 flex-1">
+                        <dl>
+                          <dt className="text-sm font-medium text-gray-500 truncate">
+                            전체 세부업무
+                          </dt>
+                          <dd className="text-lg font-medium text-gray-900">
+                            {stats.totalTasks}
+                          </dd>
+                        </dl>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white overflow-hidden shadow rounded-lg">
+                  <div className="p-5">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-teal-500 rounded-md flex items-center justify-center">
+                          <span className="text-white text-sm font-medium">✅</span>
+                        </div>
+                      </div>
+                      <div className="ml-5 w-0 flex-1">
+                        <dl>
+                          <dt className="text-sm font-medium text-gray-500 truncate">
+                            완료된 세부업무
+                          </dt>
+                          <dd className="text-lg font-medium text-gray-900">
+                            {stats.completedTasks}
+                          </dd>
+                        </dl>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white overflow-hidden shadow rounded-lg">
+                  <div className="p-5">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-orange-500 rounded-md flex items-center justify-center">
+                          <span className="text-white text-sm font-medium">⏸️</span>
+                        </div>
+                      </div>
+                      <div className="ml-5 w-0 flex-1">
+                        <dl>
+                          <dt className="text-sm font-medium text-gray-500 truncate">
+                            보류 중인 업무
+                          </dt>
+                          <dd className="text-lg font-medium text-gray-900">
+                            {stats.onHoldWorks}
+                          </dd>
+                        </dl>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white overflow-hidden shadow rounded-lg">
+                  <div className="p-5">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-gray-500 rounded-md flex items-center justify-center">
+                          <span className="text-white text-sm font-medium">📊</span>
+                        </div>
+                      </div>
+                      <div className="ml-5 w-0 flex-1">
+                        <dl>
+                          <dt className="text-sm font-medium text-gray-500 truncate">
+                            업무 완료율
+                          </dt>
+                          <dd className="text-lg font-medium text-gray-900">
+                            {stats.totalWorks > 0 ? Math.round((stats.completedWorks / stats.totalWorks) * 100) : 0}%
+                          </dd>
+                        </dl>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
         )}
 
         {/* 관리 메뉴 */}

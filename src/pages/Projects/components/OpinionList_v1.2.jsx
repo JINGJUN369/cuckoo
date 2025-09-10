@@ -102,7 +102,7 @@ const OpinionList_v1_2 = ({
   // 의견 수정 시작
   const handleEditStart = useCallback((opinion) => {
     setEditingOpinion(opinion.id);
-    setEditContent(opinion.content);
+    setEditContent(opinion.message);
   }, []);
 
   // 의견 수정 취소
@@ -268,14 +268,19 @@ const OpinionList_v1_2 = ({
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
                       <span className="text-sm font-medium text-gray-600">
-                        {(opinion.createdByName || opinion.createdBy || 'U')[0].toUpperCase()}
+                        {(opinion.author_name || opinion.createdByName || opinion.createdBy || 'U')[0].toUpperCase()}
                       </span>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-900">
-                        {opinion.createdByName || opinion.createdBy}
+                        {opinion.author_name || opinion.createdByName || opinion.createdBy}
                       </p>
                       <p className="text-xs text-gray-500">
+                        {opinion.author_team && (
+                          <span className="text-blue-600 font-medium">
+                            {opinion.author_team} • 
+                          </span>
+                        )}
                         {new Date(opinion.createdAt || opinion.created_at).toLocaleString()}
                         {opinion.updatedAt && opinion.updatedAt !== opinion.createdAt && (
                           <span> (수정됨)</span>
@@ -315,7 +320,7 @@ const OpinionList_v1_2 = ({
                     />
                   ) : (
                     <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                      {opinion.content}
+                      {opinion.message}
                     </p>
                   )}
                 </div>

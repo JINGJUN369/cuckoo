@@ -65,21 +65,26 @@ const WorkStatusDashboard = () => {
     const pendingTasks = allTasks.filter(task => task.status === '대기').length;
     const onHoldTasks = allTasks.filter(task => task.status === '보류').length;
     
-    // 부서별 통계
-    const departmentStats = additionalWorks.reduce((acc, work) => {
-      if (!acc[work.department]) {
-        acc[work.department] = {
+    // 담당자별 통계
+    const ownerStats = additionalWorks.reduce((acc, work) => {
+      const owner = work.work_owner || '미할당';
+      if (!acc[owner]) {
+        acc[owner] = {
           totalWorks: 0,
           totalTasks: 0,
           completedTasks: 0,
-          inProgressTasks: 0
+          inProgressTasks: 0,
+          completedWorks: 0
         };
       }
-      acc[work.department].totalWorks++;
+      acc[owner].totalWorks++;
+      if (work.status === '종결') {
+        acc[owner].completedWorks++;
+      }
       const workTasks = work.detail_tasks || [];
-      acc[work.department].totalTasks += workTasks.length;
-      acc[work.department].completedTasks += workTasks.filter(t => t.status === '완료').length;
-      acc[work.department].inProgressTasks += workTasks.filter(t => t.status === '진행').length;
+      acc[owner].totalTasks += workTasks.length;
+      acc[owner].completedTasks += workTasks.filter(t => t.status === '완료').length;
+      acc[owner].inProgressTasks += workTasks.filter(t => t.status === '진행').length;
       return acc;
     }, {});
 
@@ -94,7 +99,7 @@ const WorkStatusDashboard = () => {
       pendingTasks,
       onHoldTasks,
       overallProgress,
-      departmentStats
+      ownerStats
     };
   }, [additionalWorks]);
 
@@ -278,30 +283,49 @@ const WorkStatusDashboard = () => {
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">부서별 현황</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <span className="mr-2">👤</span>
+            담당자별 현황
+          </h3>
           <div className="space-y-3">
-            {Object.entries(stats.departmentStats).map(([dept, data]) => {
-              const progress = data.totalTasks > 0 ? Math.round((data.completedTasks / data.totalTasks) * 100) : 0;
+            {Object.entries(stats.ownerStats)
+              .sort(([,a], [,b]) => b.totalWorks - a.totalWorks) // 업무 수 기준으로 정렬
+              .map(([owner, data]) => {
+              const workProgress = data.totalWorks > 0 ? Math.round((data.completedWorks / data.totalWorks) * 100) : 0;
+              const taskProgress = data.totalTasks > 0 ? Math.round((data.completedTasks / data.totalTasks) * 100) : 0;
               return (
-                <div key={dept} className="border-b border-gray-100 pb-3 last:border-b-0">
+                <div key={owner} className="border-b border-gray-100 pb-3 last:border-b-0">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-900">{dept}</span>
-                    <span className="text-xs text-gray-500">{progress}%</span>
+                    <span className="text-sm font-medium text-gray-900">{owner}</span>
+                    <span className="text-xs text-gray-500">{workProgress}%</span>
                   </div>
                   <div className="w-full h-2 bg-gray-200 rounded-full">
                     <div 
-                      className="h-2 bg-indigo-500 rounded-full transition-all duration-500"
-                      style={{ width: `${progress}%` }}
+                      className="h-2 bg-blue-500 rounded-full transition-all duration-500"
+                      style={{ width: `${workProgress}%` }}
                     ></div>
                   </div>
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>업무: {data.totalWorks}개</span>
-                    <span>태스크: {data.completedTasks}/{data.totalTasks}</span>
+                    <span>업무: {data.totalWorks}개 (완료: {data.completedWorks}개)</span>
+                    <span>세부업무: {data.completedTasks}/{data.totalTasks}</span>
                   </div>
+                  {data.totalTasks > 0 && (
+                    <div className="mt-1">
+                      <div className="w-full h-1 bg-gray-100 rounded-full">
+                        <div 
+                          className="h-1 bg-green-400 rounded-full transition-all duration-500"
+                          style={{ width: `${taskProgress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
+          {Object.keys(stats.ownerStats).length === 0 && (
+            <p className="text-gray-500 text-center py-4">등록된 업무가 없습니다.</p>
+          )}
         </div>
       </div>
 

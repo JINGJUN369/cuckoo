@@ -50,9 +50,8 @@ const NotificationSystem_v1_2 = ({
       
       // 우선순위 점수 계산
       const priorityScore = {
-        critical: 4,
         high: 3,
-        normal: 2,
+        medium: 2,
         low: 1
       }[opinion.priority] || 2;
 
@@ -65,11 +64,12 @@ const NotificationSystem_v1_2 = ({
         id: opinion.id,
         projectId: opinion.projectId || opinion.project_id,
         projectName,
-        content: opinion.content,
-        priority: opinion.priority || 'normal',
+        content: opinion.message || opinion.content,
+        priority: opinion.priority || 'medium',
         stage: opinion.stage || 'general',
         createdAt: opinion.createdAt || opinion.created_at,
-        createdBy: opinion.createdByName || opinion.createdBy,
+        createdBy: opinion.author_name || opinion.createdByName || opinion.createdBy,
+        createdByTeam: opinion.author_team || '일반팀',
         score: priorityScore + ageScore,
         daysSinceCreated
       };
@@ -86,9 +86,8 @@ const NotificationSystem_v1_2 = ({
   // Stage별 그룹핑
   const notificationsByStage = useMemo(() => {
     const groups = {
-      critical: [],
       high: [],
-      normal: [],
+      medium: [],
       low: []
     };
 
@@ -117,9 +116,8 @@ const NotificationSystem_v1_2 = ({
   // 우선순위별 색상
   const getPriorityColor = (priority) => {
     switch (priority) {
-      case 'critical': return 'bg-red-50 border-red-200 text-red-800';
       case 'high': return 'bg-orange-50 border-orange-200 text-orange-800';
-      case 'normal': return 'bg-blue-50 border-blue-200 text-blue-800';
+      case 'medium': return 'bg-blue-50 border-blue-200 text-blue-800';
       case 'low': return 'bg-gray-50 border-gray-200 text-gray-800';
       default: return 'bg-gray-50 border-gray-200 text-gray-800';
     }
@@ -137,15 +135,7 @@ const NotificationSystem_v1_2 = ({
   };
 
   if (notifications.length === 0) {
-    return (
-      <div className={`bg-white rounded-lg shadow-sm border p-6 ${className}`}>
-        <div className="text-center text-gray-500">
-          <div className="text-4xl mb-2">✅</div>
-          <h3 className="text-sm font-medium">모든 의견이 처리되었습니다!</h3>
-          <p className="text-xs mt-1">새로운 의견이 등록되면 여기에 표시됩니다.</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -178,7 +168,7 @@ const NotificationSystem_v1_2 = ({
       <div className="max-h-96 overflow-y-auto">
         <div className="p-6 space-y-4">
           {/* 긴급 및 높음 우선순위 */}
-          {[...notificationsByStage.critical, ...notificationsByStage.high].map((notification) => (
+          {notificationsByStage.high.map((notification) => (
             <div
               key={notification.id}
               className={`p-4 rounded-lg border ${getPriorityColor(notification.priority)}`}
@@ -193,8 +183,9 @@ const NotificationSystem_v1_2 = ({
                        notification.stage === 'stage3' ? 'Stage 3' : notification.stage}
                     </span>
                     <span className="text-xs text-gray-600">
-                      {notification.priority === 'critical' ? '🔴 긴급' :
-                       notification.priority === 'high' ? '🟠 높음' : ''}
+                      {notification.priority === 'high' ? '🟠 높음' :
+                       notification.priority === 'medium' ? '🔵 보통' :
+                       notification.priority === 'low' ? '⚪ 낮음' : ''}
                     </span>
                     {notification.daysSinceCreated > 3 && (
                       <span className="text-xs text-red-600">
@@ -212,6 +203,11 @@ const NotificationSystem_v1_2 = ({
                       <span>{notification.projectName}</span>
                       <span className="mx-1">•</span>
                       <span>{notification.createdBy}</span>
+                      {notification.createdByTeam && (
+                        <>
+                          <span className="mx-1 text-blue-600">({notification.createdByTeam})</span>
+                        </>
+                      )}
                       <span className="mx-1">•</span>
                       <span>{new Date(notification.createdAt).toLocaleDateString()}</span>
                     </div>
@@ -236,7 +232,7 @@ const NotificationSystem_v1_2 = ({
           ))}
 
           {/* 일반 및 낮음 우선순위 */}
-          {[...notificationsByStage.normal, ...notificationsByStage.low].map((notification) => (
+          {[...notificationsByStage.medium, ...notificationsByStage.low].map((notification) => (
             <div
               key={notification.id}
               className="p-4 bg-gray-50 rounded-lg border border-gray-200"
@@ -266,6 +262,11 @@ const NotificationSystem_v1_2 = ({
                       <span>{notification.projectName}</span>
                       <span className="mx-1">•</span>
                       <span>{notification.createdBy}</span>
+                      {notification.createdByTeam && (
+                        <>
+                          <span className="mx-1 text-blue-600">({notification.createdByTeam})</span>
+                        </>
+                      )}
                       <span className="mx-1">•</span>
                       <span>{new Date(notification.createdAt).toLocaleDateString()}</span>
                     </div>
