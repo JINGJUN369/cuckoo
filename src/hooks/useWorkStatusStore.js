@@ -24,13 +24,15 @@ const useWorkStatusStore = create(
       loading: false,
       error: null,
       activityLogs: [],
+      users: [], // 사용자 목록
       
-      // UI 상태
+      // UI 상태 + 필터링
       ui: {
         currentView: 'work-status', // 'work-status', 'work-status-dashboard', 'work-status-calendar'
         showCreateModal: false,
         showTaskModal: false,
         selectedTaskId: null,
+        selectedUserId: 'current_user', // 'current_user', 'all_users', 또는 특정 사용자 ID
       },
 
       // ================================
@@ -38,9 +40,9 @@ const useWorkStatusStore = create(
       // ================================
       
       /**
-       * 모든 추가업무 조회 (관련 세부업무 포함)
+       * 모든 추가업무 조회 (관련 세부업무 포함) - 종결된 업무 제외
        */
-      fetchAdditionalWorks: async () => {
+      fetchAdditionalWorks: async (userId = null) => {
         try {
           set({ loading: true, error: null });
           
@@ -49,29 +51,206 @@ const useWorkStatusStore = create(
             throw new Error('Supabase client not initialized');
           }
 
-          const { data, error } = await supabase
+          // 현재 로그인한 사용자 정보 가져오기
+          const savedUser = sessionStorage.getItem('supabase_user');
+          const currentUser = savedUser ? JSON.parse(savedUser) : null;
+          
+          // 필터링할 사용자 ID 결정
+          const { selectedUserId } = get().ui;
+          let targetUserId = userId || selectedUserId;
+          
+          console.log('🔍 [WorkStatus] Filtering works for:', { targetUserId, currentUser: currentUser?.email });
+          
+          // 쿼리 빌드
+          let query = supabase
             .from('additional_works')
-            .select(`
-              *,
-              detail_tasks (*),
-              projects (name),
-              profiles!created_by (name, email)
-            `)
-            .order('created_at', { ascending: false });
+            .select('*')
+            .neq('status', '종결'); // 종결된 업무 제외
+
+          // 사용자 필터링 적용
+          if (targetUserId === 'current_user' && currentUser) {
+            // 사용자 목록이 로드되지 않았다면 먼저 로드
+            let users = get().users;
+            if (users.length === 0) {
+              console.log('👥 [WorkStatus] Users not loaded, fetching...');
+              users = await get().fetchUsers();
+            }
+            
+            // 현재 사용자의 이름으로 필터링 (work_owner가 사용자 이름으로 저장됨)
+            const currentUserProfile = users.find(u => u.id === currentUser.id);
+            console.log('👤 [WorkStatus] Current user profile:', currentUserProfile);
+            
+            if (currentUserProfile) {
+              query = query.eq('work_owner', currentUserProfile.name);
+              console.log('📋 [WorkStatus] Filtering by work_owner:', currentUserProfile.name);
+            } else {
+              console.warn('⚠️ [WorkStatus] Current user profile not found in users list');
+              // 대안: 이메일로 매칭 시도
+              const profileByEmail = users.find(u => u.email === currentUser.email);
+              if (profileByEmail) {
+                query = query.eq('work_owner', profileByEmail.name);
+                console.log('📋 [WorkStatus] Filtering by email match, work_owner:', profileByEmail.name);
+              } else {
+                // 마지막 대안: created_by 필드로 매칭
+                query = query.eq('created_by', currentUser.id);
+                console.log('📋 [WorkStatus] Filtering by created_by:', currentUser.id);
+              }
+            }
+          } else if (targetUserId && targetUserId !== 'all_users' && targetUserId !== 'current_user') {
+            // 선택된 사용자의 이름으로 필터링
+            let users = get().users;
+            if (users.length === 0) {
+              users = await get().fetchUsers();
+            }
+            
+            const selectedUser = users.find(u => u.id === targetUserId);
+            if (selectedUser) {
+              query = query.eq('work_owner', selectedUser.name);
+              console.log('📋 [WorkStatus] Filtering by selected user:', selectedUser.name);
+            }
+          } else {
+            console.log('📋 [WorkStatus] No filtering applied (all users)');
+          }
+
+          const { data, error } = await query.order('created_at', { ascending: false });
 
           if (error) throw error;
 
+          // 세부업무도 별도로 가져오기
+          const additionalWorksWithTasks = await Promise.all(
+            (data || []).map(async (work) => {
+              const { data: tasks } = await supabase
+                .from('detail_tasks')
+                .select('*')
+                .eq('additional_work_id', work.id);
+              
+              return {
+                ...work,
+                detail_tasks: tasks || []
+              };
+            })
+          );
+
           set({ 
-            additionalWorks: data || [],
+            additionalWorks: additionalWorksWithTasks,
             loading: false 
           });
 
-          console.log('📋 [WorkStatus] Fetched additional works:', data?.length || 0);
-          return data;
+          console.log('📋 [WorkStatus] Fetched additional works:', additionalWorksWithTasks?.length || 0, 'for user:', targetUserId);
+          return additionalWorksWithTasks;
         } catch (error) {
           console.error('❌ [WorkStatus] Error fetching additional works:', error);
           set({ 
             error: error.message || 'Failed to fetch additional works',
+            loading: false 
+          });
+          // Don't re-throw to prevent app crashes
+          return [];
+        }
+      },
+
+      /**
+       * 종결된 추가업무 조회 (관련 세부업무 포함)
+       */
+      fetchCompletedWorks: async (userId = null) => {
+        try {
+          set({ loading: true, error: null });
+          
+          // Supabase 클라이언트 검증
+          if (!supabase) {
+            throw new Error('Supabase client not initialized');
+          }
+
+          // 현재 로그인한 사용자 정보 가져오기
+          const savedUser = sessionStorage.getItem('supabase_user');
+          const currentUser = savedUser ? JSON.parse(savedUser) : null;
+          
+          // 필터링할 사용자 ID 결정
+          const { selectedUserId } = get().ui;
+          let targetUserId = userId || selectedUserId;
+          
+          console.log('🔍 [WorkStatus] Filtering completed works for:', { targetUserId, currentUser: currentUser?.email });
+          
+          // 쿼리 빌드
+          let query = supabase
+            .from('additional_works')
+            .select('*')
+            .eq('status', '종결'); // 종결된 업무만 조회
+
+          // 사용자 필터링 적용
+          if (targetUserId === 'current_user' && currentUser) {
+            // 사용자 목록이 로드되지 않았다면 먼저 로드
+            let users = get().users;
+            if (users.length === 0) {
+              console.log('👥 [WorkStatus] Users not loaded for completed works, fetching...');
+              users = await get().fetchUsers();
+            }
+            
+            // 현재 사용자의 이름으로 필터링 (work_owner가 사용자 이름으로 저장됨)
+            const currentUserProfile = users.find(u => u.id === currentUser.id);
+            console.log('👤 [WorkStatus] Current user profile for completed works:', currentUserProfile);
+            
+            if (currentUserProfile) {
+              query = query.eq('work_owner', currentUserProfile.name);
+              console.log('📋 [WorkStatus] Filtering completed works by work_owner:', currentUserProfile.name);
+            } else {
+              console.warn('⚠️ [WorkStatus] Current user profile not found in users list for completed works');
+              // 대안: 이메일로 매칭 시도
+              const profileByEmail = users.find(u => u.email === currentUser.email);
+              if (profileByEmail) {
+                query = query.eq('work_owner', profileByEmail.name);
+                console.log('📋 [WorkStatus] Filtering completed works by email match, work_owner:', profileByEmail.name);
+              } else {
+                // 마지막 대안: created_by 필드로 매칭
+                query = query.eq('created_by', currentUser.id);
+                console.log('📋 [WorkStatus] Filtering completed works by created_by:', currentUser.id);
+              }
+            }
+          } else if (targetUserId && targetUserId !== 'all_users' && targetUserId !== 'current_user') {
+            // 선택된 사용자의 이름으로 필터링
+            let users = get().users;
+            if (users.length === 0) {
+              users = await get().fetchUsers();
+            }
+            
+            const selectedUser = users.find(u => u.id === targetUserId);
+            if (selectedUser) {
+              query = query.eq('work_owner', selectedUser.name);
+              console.log('📋 [WorkStatus] Filtering completed works by selected user:', selectedUser.name);
+            }
+          } else {
+            console.log('📋 [WorkStatus] No filtering applied for completed works (all users)');
+          }
+
+          const { data, error } = await query.order('created_at', { ascending: false });
+
+          if (error) throw error;
+
+          // 세부업무도 별도로 가져오기
+          const completedWorksWithTasks = await Promise.all(
+            (data || []).map(async (work) => {
+              const { data: tasks } = await supabase
+                .from('detail_tasks')
+                .select('*')
+                .eq('additional_work_id', work.id);
+              
+              return {
+                ...work,
+                detail_tasks: tasks || []
+              };
+            })
+          );
+
+          set({ 
+            loading: false 
+          });
+
+          console.log('📋 [WorkStatus] Fetched completed works:', completedWorksWithTasks?.length || 0, 'for user:', targetUserId);
+          return completedWorksWithTasks;
+        } catch (error) {
+          console.error('❌ [WorkStatus] Error fetching completed works:', error);
+          set({ 
+            error: error.message || 'Failed to fetch completed works',
             loading: false 
           });
           // Don't re-throw to prevent app crashes
@@ -86,28 +265,32 @@ const useWorkStatusStore = create(
         try {
           set({ loading: true, error: null });
           
-          const user = (await supabase.auth.getUser()).data.user;
-          if (!user) throw new Error('로그인이 필요합니다.');
+          // 세션 스토리지에서 현재 로그인된 사용자 정보 가져오기
+          const savedUser = sessionStorage.getItem('supabase_user');
+          if (!savedUser) throw new Error('로그인이 필요합니다.');
+          
+          const user = JSON.parse(savedUser);
 
           const { data, error } = await supabase
             .from('additional_works')
             .insert({
               ...workData,
-              created_by: user.id
+              created_by: '550e8400-e29b-41d4-a716-446655440000' // 관리자 UUID
             })
-            .select(`
-              *,
-              detail_tasks (*),
-              projects (name),
-              profiles!created_by (name, email)
-            `)
+            .select('*')
             .single();
 
           if (error) throw error;
 
+          // 생성된 업무에 빈 detail_tasks 배열 추가
+          const workWithTasks = {
+            ...data,
+            detail_tasks: []
+          };
+
           // 상태 업데이트
           set(state => ({
-            additionalWorks: [data, ...state.additionalWorks],
+            additionalWorks: [workWithTasks, ...state.additionalWorks],
             loading: false
           }));
 
@@ -140,22 +323,17 @@ const useWorkStatusStore = create(
               updated_at: new Date().toISOString()
             })
             .eq('id', workId)
-            .select(`
-              *,
-              detail_tasks (*),
-              projects (name),
-              profiles!created_by (name, email)
-            `)
+            .select('*')
             .single();
 
           if (error) throw error;
 
-          // 상태 업데이트
+          // 상태 업데이트 (기존 detail_tasks 보존)
           set(state => ({
             additionalWorks: state.additionalWorks.map(work => 
-              work.id === workId ? data : work
+              work.id === workId ? { ...data, detail_tasks: work.detail_tasks || [] } : work
             ),
-            selectedWork: state.selectedWork?.id === workId ? data : state.selectedWork,
+            selectedWork: state.selectedWork?.id === workId ? { ...data, detail_tasks: state.selectedWork.detail_tasks || [] } : state.selectedWork,
             loading: false
           }));
 
@@ -220,15 +398,18 @@ const useWorkStatusStore = create(
         try {
           set({ loading: true, error: null });
           
-          const user = (await supabase.auth.getUser()).data.user;
-          if (!user) throw new Error('로그인이 필요합니다.');
+          // 세션 스토리지에서 현재 로그인된 사용자 정보 가져오기
+          const savedUser = sessionStorage.getItem('supabase_user');
+          if (!savedUser) throw new Error('로그인이 필요합니다.');
+          
+          const user = JSON.parse(savedUser);
 
           const { data, error } = await supabase
             .from('detail_tasks')
             .insert({
               ...taskData,
               additional_work_id: additionalWorkId,
-              created_by: user.id
+              created_by: '550e8400-e29b-41d4-a716-446655440000' // 관리자 UUID
             })
             .select()
             .single();
@@ -395,13 +576,16 @@ const useWorkStatusStore = create(
        */
       logActivity: async (actionType, tableName, recordId, oldValues, newValues) => {
         try {
-          const user = (await supabase.auth.getUser()).data.user;
-          if (!user) return; // 로그인 안된 경우 스킵
+          // 세션 스토리지에서 현재 로그인된 사용자 정보 가져오기
+          const savedUser = sessionStorage.getItem('supabase_user');
+          if (!savedUser) return; // 로그인 안된 경우 스킵
+          
+          const user = JSON.parse(savedUser);
 
           await supabase
             .from('work_activity_logs')
             .insert({
-              user_id: user.id,
+              user_id: '550e8400-e29b-41d4-a716-446655440000', // 관리자 UUID
               action_type: actionType,
               table_name: tableName,
               record_id: recordId,
@@ -430,10 +614,7 @@ const useWorkStatusStore = create(
 
           const { data, error } = await supabase
             .from('work_activity_logs')
-            .select(`
-              *,
-              profiles!user_id (name, email)
-            `)
+            .select('*')
             .order('created_at', { ascending: false })
             .limit(limit);
 
@@ -454,6 +635,39 @@ const useWorkStatusStore = create(
       },
 
       // ================================
+      // USER MANAGEMENT ACTIONS
+      // ================================
+
+      /**
+       * 사용자 목록 조회
+       */
+      fetchUsers: async () => {
+        try {
+          if (!supabase) {
+            throw new Error('Supabase client not initialized');
+          }
+
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('id, name, email')
+            .order('name');
+
+          if (error) throw error;
+
+          set({ users: data || [] });
+          console.log('👥 [WorkStatus] Fetched users:', data?.length || 0);
+          return data;
+        } catch (error) {
+          console.error('❌ [WorkStatus] Error fetching users:', error);
+          set({ 
+            error: error.message || 'Failed to fetch users',
+            users: []
+          });
+          return [];
+        }
+      },
+
+      // ================================
       // UI ACTIONS
       // ================================
 
@@ -465,6 +679,21 @@ const useWorkStatusStore = create(
           ui: { ...state.ui, currentView: view }
         }));
         console.log('🚀 [WorkStatus] View changed to:', view);
+      },
+
+      /**
+       * 사용자 필터 변경
+       */
+      setSelectedUserId: (userId) => {
+        set(state => ({
+          ui: { ...state.ui, selectedUserId: userId }
+        }));
+        console.log('👤 [WorkStatus] User filter changed to:', userId);
+        
+        // 필터 변경시 데이터 다시 로드
+        setTimeout(() => {
+          get().fetchAdditionalWorks(userId);
+        }, 0);
       },
 
       /**

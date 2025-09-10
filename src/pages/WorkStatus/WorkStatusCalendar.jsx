@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import useWorkStatusStore from '../../hooks/useWorkStatusStore';
+import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
 
 /**
  * WorkStatusCalendar - 업무달력 페이지
@@ -11,11 +12,16 @@ import useWorkStatusStore from '../../hooks/useWorkStatusStore';
  * - 임박한 마감일 강조 표시
  */
 const WorkStatusCalendar = () => {
+  const { user, profile } = useSupabaseAuth();
   const {
     additionalWorks,
+    users,
     loading,
     error,
+    ui,
     fetchAdditionalWorks,
+    fetchUsers,
+    setSelectedUserId,
     setupRealtimeSubscriptions
   } = useWorkStatusStore();
 
@@ -24,10 +30,29 @@ const WorkStatusCalendar = () => {
 
   // 데이터 로드 및 실시간 구독
   useEffect(() => {
+    fetchUsers();
     fetchAdditionalWorks();
     const unsubscribe = setupRealtimeSubscriptions();
     return unsubscribe;
   }, []);
+
+  // 사용자 필터 변경 핸들러
+  const handleUserFilterChange = (e) => {
+    setSelectedUserId(e.target.value);
+  };
+
+  // 현재 선택된 사용자 이름 가져오기
+  const getSelectedUserName = () => {
+    const { selectedUserId } = ui;
+    if (selectedUserId === 'current_user') {
+      return profile?.name || user?.email || '현재 사용자';
+    } else if (selectedUserId === 'all_users') {
+      return '전체 사용자';
+    } else {
+      const selectedUser = users.find(u => u.id === selectedUserId);
+      return selectedUser ? selectedUser.name : '선택된 사용자';
+    }
+  };
 
   // 달력 데이터 생성
   const calendarData = React.useMemo(() => {
@@ -100,27 +125,51 @@ const WorkStatusCalendar = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       {/* 헤더 */}
       <div className="mb-8">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">📅 업무달력</h1>
             <p className="text-gray-600 mt-2">팀 전체의 업무 일정을 한눈에 확인하세요.</p>
           </div>
-          <div className="flex space-x-3">
-            <button
-              onClick={goToToday}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              오늘
-            </button>
-            <select
-              value={viewMode}
-              onChange={(e) => setViewMode(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="month">월 보기</option>
-              <option value="week">주 보기</option>
-              <option value="day">일 보기</option>
-            </select>
+          
+          <div className="flex items-center space-x-4">
+            {/* 사용자 필터 드롭다운 */}
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600">👤 사용자 필터:</span>
+              <select
+                value={ui.selectedUserId}
+                onChange={handleUserFilterChange}
+                className="border border-gray-300 rounded-md px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option value="current_user">내 업무만</option>
+                <option value="all_users">전체 사용자</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.email})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="text-sm text-gray-500 bg-gray-100 px-3 py-2 rounded-lg">
+              현재 보기: <span className="font-medium text-gray-700">{getSelectedUserName()}</span>
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={goToToday}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                오늘
+              </button>
+              <select
+                value={viewMode}
+                onChange={(e) => setViewMode(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option value="month">월 보기</option>
+                <option value="week">주 보기</option>
+                <option value="day">일 보기</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>

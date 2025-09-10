@@ -33,6 +33,7 @@ import PublicReportViewer from './pages/PublicReport/PublicReportViewer';
 import WorkStatusManagePage from './pages/WorkStatus/WorkStatusManagePage';
 import WorkStatusDashboard from './pages/WorkStatus/WorkStatusDashboard';
 import WorkStatusCalendar from './pages/WorkStatus/WorkStatusCalendar';
+import CompletedWorksPage from './pages/WorkStatus/CompletedWorksPage';
 
 // Layout Components
 import Layout_v1_2 from './components/layout/Layout_v1.2';
@@ -144,6 +145,14 @@ function App_v1_2() {
                 <ProtectedRoute>
                   <Layout_v1_2>
                     <WorkStatusCalendar />
+                  </Layout_v1_2>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/work-status/completed" element={
+                <ProtectedRoute>
+                  <Layout_v1_2>
+                    <CompletedWorksPage />
                   </Layout_v1_2>
                 </ProtectedRoute>
               } />

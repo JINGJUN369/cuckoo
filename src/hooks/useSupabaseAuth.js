@@ -208,8 +208,17 @@ export const useSupabaseAuth = () => {
       setLoading(true);
       
       // users 테이블에 새 사용자 추가 (승인 대기 상태로)
+      // UUID 형식의 ID 생성
+      const generateUUID = () => {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0;
+          const v = c == 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      };
+      
       const newUser = {
-        id: `user_${Date.now()}`,
+        id: generateUUID(),
         name,
         email,
         team: team || '일반팀',

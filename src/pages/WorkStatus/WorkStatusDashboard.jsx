@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import useWorkStatusStore from '../../hooks/useWorkStatusStore';
+import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
 
 /**
  * WorkStatusDashboard - 업무현황 대시보드
@@ -11,13 +12,18 @@ import useWorkStatusStore from '../../hooks/useWorkStatusStore';
  * - 실시간 업무 활동 모니터링
  */
 const WorkStatusDashboard = () => {
+  const { user, profile } = useSupabaseAuth();
   const {
     additionalWorks,
     activityLogs,
+    users,
     loading,
     error,
+    ui,
     fetchAdditionalWorks,
     fetchActivityLogs,
+    fetchUsers,
+    setSelectedUserId,
     setupRealtimeSubscriptions
   } = useWorkStatusStore();
 
@@ -25,11 +31,30 @@ const WorkStatusDashboard = () => {
 
   // 데이터 로드 및 실시간 구독
   useEffect(() => {
+    fetchUsers();
     fetchAdditionalWorks();
     fetchActivityLogs();
     const unsubscribe = setupRealtimeSubscriptions();
     return unsubscribe;
   }, []);
+
+  // 사용자 필터 변경 핸들러
+  const handleUserFilterChange = (e) => {
+    setSelectedUserId(e.target.value);
+  };
+
+  // 현재 선택된 사용자 이름 가져오기
+  const getSelectedUserName = () => {
+    const { selectedUserId } = ui;
+    if (selectedUserId === 'current_user') {
+      return profile?.name || user?.email || '현재 사용자';
+    } else if (selectedUserId === 'all_users') {
+      return '전체 사용자';
+    } else {
+      const selectedUser = users.find(u => u.id === selectedUserId);
+      return selectedUser ? selectedUser.name : '선택된 사용자';
+    }
+  };
 
   // 통계 계산
   const stats = React.useMemo(() => {
@@ -100,8 +125,35 @@ const WorkStatusDashboard = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       {/* 헤더 */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">📊 업무현황</h1>
-        <p className="text-gray-600 mt-2">전체 업무 진행 상황을 실시간으로 모니터링합니다.</p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">📊 업무현황</h1>
+            <p className="text-gray-600 mt-2">전체 업무 진행 상황을 실시간으로 모니터링합니다.</p>
+          </div>
+          
+          {/* 사용자 필터 드롭다운 */}
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600">👤 사용자 필터:</span>
+              <select
+                value={ui.selectedUserId}
+                onChange={handleUserFilterChange}
+                className="border border-gray-300 rounded-md px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="current_user">내 업무만</option>
+                <option value="all_users">전체 사용자</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.email})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="text-sm text-gray-500 bg-gray-100 px-3 py-2 rounded-lg">
+              현재 보기: <span className="font-medium text-gray-700">{getSelectedUserName()}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* 에러 메시지 */}
