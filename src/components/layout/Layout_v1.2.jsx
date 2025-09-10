@@ -43,7 +43,9 @@ const Layout = React.memo(({ children }) => {
     { path: '/projects', label: '신제품관리', icon: '📁', section: 'products' },
     { path: '/calendar', label: '달력', icon: '📅', section: 'products' },
     { path: '/completed', label: '완료된 프로젝트', icon: '✅', section: 'products' },
-    { path: '/work-status', label: '업무현황관리', icon: '📋', section: 'work' },
+    { path: '/work-status', label: '업무현황', icon: '📊', section: 'work' },
+    { path: '/work-status/manage', label: '업무관리', icon: '📋', section: 'work' },
+    { path: '/work-status/calendar', label: '업무달력', icon: '📅', section: 'work' },
   ], []);
 
   // 관리자 메뉴 (관리자만 표시)
@@ -155,7 +157,7 @@ const Layout = React.memo(({ children }) => {
               {/* Work Status Management */}
               <div className="space-y-2">
                 <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  업무현황관리 <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">v2.0</span>
+                  업무현황관리
                 </h3>
                 {isAuthenticated && navigationItems.filter(item => item.section === 'work').map((item) => (
                   <Link

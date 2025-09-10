@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { supabase } from '../utils/supabase';
+import { supabase } from '../lib/supabase';
 
 /**
  * useWorkStatusStore - 업무현황관리 시스템 v2.0 상태 관리

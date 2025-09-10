@@ -6,8 +6,8 @@ const Footer = () => {
   const { user, profile, isAuthenticated } = useSupabaseAuth();
   
   const currentYear = new Date().getFullYear();
-  const version = "1.2.0";
-  const buildDate = "2025-09-04";
+  const version = "2.0.0";
+  const buildDate = "2025-01-09";
   
   return (
     <footer className="bg-white border-t border-gray-200 mt-auto">
