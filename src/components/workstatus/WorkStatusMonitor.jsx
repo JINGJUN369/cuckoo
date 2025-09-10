@@ -34,6 +34,13 @@ const WorkStatusMonitor = ({ children }) => {
   useEffect(() => {
     const setupMonitoring = async () => {
       try {
+        // 환경 변수 확인
+        if (!process.env.REACT_APP_SUPABASE_URL || !process.env.REACT_APP_SUPABASE_ANON_KEY) {
+          console.warn('⚠️ [WorkStatusMonitor] Supabase environment variables not configured');
+          setIsConnected(false);
+          return;
+        }
+
         // 초기 데이터 로드
         await fetchActivityLogs();
         
@@ -182,8 +189,8 @@ const WorkStatusMonitor = ({ children }) => {
       <ConnectionStatus />
       <ToastNotifications />
       
-      {/* CSS 애니메이션 */}
-      <style jsx>{`
+      {/* CSS styles inline */}
+      <style>{`
         @keyframes slide-in-right {
           from {
             transform: translateX(100%);
@@ -199,7 +206,7 @@ const WorkStatusMonitor = ({ children }) => {
           animation: slide-in-right 0.3s ease-out;
         }
         
-        @keyframes pulse {
+        @keyframes pulse-custom {
           0%, 100% {
             opacity: 1;
           }
@@ -208,8 +215,8 @@ const WorkStatusMonitor = ({ children }) => {
           }
         }
         
-        .animate-pulse {
-          animation: pulse 2s infinite;
+        .animate-pulse-custom {
+          animation: pulse-custom 2s infinite;
         }
       `}</style>
     </>

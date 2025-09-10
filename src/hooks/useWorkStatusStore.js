@@ -44,6 +44,11 @@ const useWorkStatusStore = create(
         try {
           set({ loading: true, error: null });
           
+          // Supabase 클라이언트 검증
+          if (!supabase) {
+            throw new Error('Supabase client not initialized');
+          }
+
           const { data, error } = await supabase
             .from('additional_works')
             .select(`
@@ -66,10 +71,11 @@ const useWorkStatusStore = create(
         } catch (error) {
           console.error('❌ [WorkStatus] Error fetching additional works:', error);
           set({ 
-            error: error.message,
+            error: error.message || 'Failed to fetch additional works',
             loading: false 
           });
-          throw error;
+          // Don't re-throw to prevent app crashes
+          return [];
         }
       },
 
@@ -415,6 +421,13 @@ const useWorkStatusStore = create(
        */
       fetchActivityLogs: async (limit = 50) => {
         try {
+          // Supabase 클라이언트 검증
+          if (!supabase) {
+            console.warn('⚠️ [WorkStatus] Supabase client not initialized');
+            set({ activityLogs: [] });
+            return [];
+          }
+
           const { data, error } = await supabase
             .from('work_activity_logs')
             .select(`
@@ -431,8 +444,12 @@ const useWorkStatusStore = create(
           return data;
         } catch (error) {
           console.error('❌ [WorkStatus] Error fetching activity logs:', error);
-          set({ error: error.message });
-          throw error;
+          set({ 
+            error: error.message || 'Failed to fetch activity logs',
+            activityLogs: []
+          });
+          // Don't re-throw to prevent app crashes
+          return [];
         }
       },
 
