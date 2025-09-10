@@ -86,7 +86,7 @@ const AppRouter = () => {
     }
     
     // 인증이 필요한 뷰들
-    const protectedViews = ['list', 'detail', 'edit', 'project-dashboard', 'main-dashboard', 'calendar', 'completed', 'admin-dashboard', 'user-management', 'audit-log', 'security-settings'];
+    const protectedViews = ['list', 'detail', 'edit', 'project-dashboard', 'main-dashboard', 'calendar', 'completed', 'work-status', 'work-status-dashboard', 'work-status-calendar', 'work-status-detail', 'work-status-edit', 'admin-dashboard', 'user-management', 'audit-log', 'security-settings'];
     
     // 인증되지 않은 상태에서 보호된 뷰 접근 시 로그인으로 리다이렉트
     if (!isAuthenticated && protectedViews.includes(currentView)) {
@@ -136,6 +136,27 @@ const AppRouter = () => {
       case 'completed':
         console.log(`✅ [v1.1] → CompletedProjects_v11 component`);
         return <CompletedProjects_v11 />;
+        
+      // 업무현황관리 시스템 뷰 (v2.0)
+      case 'work-status':
+        console.log(`✅ [v2.0] → WorkStatusListPage component`);
+        return <div className="p-8"><h1 className="text-2xl font-bold">업무현황 관리 (v2.0 - 개발중)</h1></div>;
+        
+      case 'work-status-dashboard':
+        console.log(`✅ [v2.0] → WorkStatusDashboard component`);
+        return <div className="p-8"><h1 className="text-2xl font-bold">업무현황 대시보드 (v2.0 - 개발중)</h1></div>;
+        
+      case 'work-status-calendar':
+        console.log(`✅ [v2.0] → WorkStatusCalendar component`);
+        return <div className="p-8"><h1 className="text-2xl font-bold">업무현황 달력 (v2.0 - 개발중)</h1></div>;
+        
+      case 'work-status-detail':
+        console.log(`✅ [v2.0] → WorkStatusDetailPage component`);
+        return <div className="p-8"><h1 className="text-2xl font-bold">업무 상세보기 (v2.0 - 개발중)</h1></div>;
+        
+      case 'work-status-edit':
+        console.log(`✅ [v2.0] → WorkStatusEditPage component`);
+        return <div className="p-8"><h1 className="text-2xl font-bold">업무 편집 (v2.0 - 개발중)</h1></div>;
         
       // 관리자 시스템 뷰 (v1.1)
       case 'admin-dashboard':

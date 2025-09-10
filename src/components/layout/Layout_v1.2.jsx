@@ -39,10 +39,11 @@ const Layout = React.memo(({ children }) => {
 
   // 네비게이션 메뉴 설정 (메모이제이션)
   const navigationItems = useMemo(() => [
-    { path: '/dashboard', label: '대시보드', icon: '📊' },
-    { path: '/projects', label: '프로젝트', icon: '📁' },
-    { path: '/calendar', label: '달력', icon: '📅' },
-    { path: '/completed', label: '완료된 프로젝트', icon: '✅' },
+    { path: '/dashboard', label: '대시보드', icon: '📊', section: 'main' },
+    { path: '/projects', label: '신제품관리', icon: '📁', section: 'products' },
+    { path: '/calendar', label: '달력', icon: '📅', section: 'products' },
+    { path: '/completed', label: '완료된 프로젝트', icon: '✅', section: 'products' },
+    { path: '/work-status', label: '업무현황관리', icon: '📋', section: 'work' },
   ], []);
 
   // 관리자 메뉴 (관리자만 표시)
@@ -108,24 +109,69 @@ const Layout = React.memo(({ children }) => {
         <aside className="w-64 bg-white shadow-sm border-r border-gray-200 flex flex-col">
           <nav className="flex-1 mt-8 px-4">
             {/* Main Navigation */}
-            <div className="space-y-2">
-              <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                메인 메뉴
-              </h3>
-              {isAuthenticated && navigationItems.map((item) => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                    isCurrentPath(item.path)
-                      ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-                >
-                  <span className="mr-3">{item.icon}</span>
-                  {item.label}
-                </Link>
-              ))}
+            <div className="space-y-6">
+              {/* Dashboard */}
+              <div className="space-y-2">
+                <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  대시보드
+                </h3>
+                {isAuthenticated && navigationItems.filter(item => item.section === 'main').map((item) => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                      isCurrentPath(item.path)
+                        ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
+                  >
+                    <span className="mr-3">{item.icon}</span>
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+              
+              {/* Product Management */}
+              <div className="space-y-2">
+                <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  신제품관리
+                </h3>
+                {isAuthenticated && navigationItems.filter(item => item.section === 'products').map((item) => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                      isCurrentPath(item.path)
+                        ? 'bg-green-50 text-green-700 border-r-2 border-green-700'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
+                  >
+                    <span className="mr-3">{item.icon}</span>
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+              
+              {/* Work Status Management */}
+              <div className="space-y-2">
+                <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  업무현황관리 <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">v2.0</span>
+                </h3>
+                {isAuthenticated && navigationItems.filter(item => item.section === 'work').map((item) => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                      isCurrentPath(item.path)
+                        ? 'bg-purple-50 text-purple-700 border-r-2 border-purple-700'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
+                  >
+                    <span className="mr-3">{item.icon}</span>
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
             </div>
 
             {/* Admin Navigation */}

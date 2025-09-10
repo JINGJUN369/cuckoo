@@ -42,7 +42,17 @@ const BrandHeader = ({ showNav = true, currentPage, setCurrentPage, onToggleOnli
                       : 'text-gray-700 hover:text-gray-900'
                   }`}
                 >
-                  📊 프로젝트
+                  📊 신제품관리
+                </button>
+                <button 
+                  onClick={() => setCurrentPage && setCurrentPage('work-status')}
+                  className={`text-sm font-medium transition-colors ${
+                    currentPage === 'work-status'
+                      ? 'text-blue-600'
+                      : 'text-gray-700 hover:text-gray-900'
+                  }`}
+                >
+                  📋 업무현황관리
                 </button>
                 {profile?.role === 'admin' && (
                   <button 

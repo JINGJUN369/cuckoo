@@ -114,6 +114,35 @@ function App_v1_2() {
                 </ProtectedRoute>
               } />
               
+              {/* Work Status Management Routes (v2.0) */}
+              <Route path="/work-status" element={
+                <ProtectedRoute>
+                  <Layout_v1_2>
+                    <div className="p-8">
+                      <h1 className="text-2xl font-bold text-gray-900 mb-4">📋 업무현황 관리</h1>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                        <p className="text-blue-800 mb-2">🚀 <strong>버전 2.0 업데이트</strong></p>
+                        <p className="text-blue-700">업무현황관리 시스템이 개발 중입니다.</p>
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="bg-white p-4 rounded border">
+                            <h3 className="font-medium text-gray-900">📊 대시보드</h3>
+                            <p className="text-sm text-gray-600 mt-1">업무 현황 모니터링</p>
+                          </div>
+                          <div className="bg-white p-4 rounded border">
+                            <h3 className="font-medium text-gray-900">📋 업무 관리</h3>
+                            <p className="text-sm text-gray-600 mt-1">추가업무 및 세부업무 관리</p>
+                          </div>
+                          <div className="bg-white p-4 rounded border">
+                            <h3 className="font-medium text-gray-900">📅 달력</h3>
+                            <p className="text-sm text-gray-600 mt-1">일정 및 마감일 관리</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Layout_v1_2>
+                </ProtectedRoute>
+              } />
+              
               <Route path="/profile" element={
                 <ProtectedRoute>
                   <Layout_v1_2>
