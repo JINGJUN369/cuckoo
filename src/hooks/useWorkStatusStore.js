@@ -61,7 +61,7 @@ const useWorkStatusStore = create(
           
           console.log('🔍 [WorkStatus] Filtering works for:', { targetUserId, currentUser: currentUser?.email });
           
-          // 기본 쿼리 - 서버 사이드 필터링 제거하여 400 오류 방지
+          // 실제 additional_works 테이블 사용
           const { data, error } = await supabase
             .from('additional_works')
             .select('*')
@@ -698,11 +698,15 @@ const useWorkStatusStore = create(
             logData.user_id = '00000000-0000-0000-0000-000000000000';
           }
 
-          await supabase
-            .from('work_activity_logs')
-            .insert(logData);
-
-          console.log('📝 [WorkStatus] Activity logged:', { actionType, tableName, recordId });
+          // activity_logs 테이블에 기록 시도 (실패해도 메인 기능에 영향 안줌)
+          try {
+            await supabase
+              .from('activity_logs')
+              .insert(logData);
+            console.log('📝 [WorkStatus] Activity logged to Supabase:', { actionType, tableName, recordId });
+          } catch (supabaseLogError) {
+            console.warn('⚠️ [WorkStatus] Supabase activity logging failed (non-critical):', supabaseLogError.message);
+          }
         } catch (error) {
           console.error('❌ [WorkStatus] Error logging activity:', error);
           // 활동 로그 실패는 메인 기능에 영향주지 않음
@@ -722,23 +726,28 @@ const useWorkStatusStore = create(
           }
 
           const { data, error } = await supabase
-            .from('work_activity_logs')
+            .from('activity_logs')
             .select('*')
             .order('created_at', { ascending: false })
             .limit(limit);
 
-          if (error) throw error;
+          if (error) {
+            // 테이블이 존재하지 않거나 권한이 없는 경우 조용히 처리
+            if (error.code === '42P01' || error.message?.includes('relation') || error.message?.includes('does not exist')) {
+              console.warn('⚠️ [WorkStatus] activity_logs 테이블이 존재하지 않습니다. 빈 로그로 처리합니다.');
+              set({ activityLogs: [] });
+              return [];
+            }
+            throw error;
+          }
 
           set({ activityLogs: data || [] });
           console.log('📋 [WorkStatus] Fetched activity logs:', data?.length || 0);
           return data;
         } catch (error) {
-          console.error('❌ [WorkStatus] Error fetching activity logs:', error);
-          set({ 
-            error: error.message || 'Failed to fetch activity logs',
-            activityLogs: []
-          });
-          // Don't re-throw to prevent app crashes
+          console.warn('⚠️ [WorkStatus] Activity logs fetch failed (non-critical):', error.message);
+          set({ activityLogs: [] });
+          // Don't re-throw to prevent app crashes - activity logs are not critical
           return [];
         }
       },
@@ -748,17 +757,23 @@ const useWorkStatusStore = create(
       // ================================
 
       /**
-       * 사용자 목록 조회
+       * 사용자 목록 조회 (캐싱 적용)
        */
       fetchUsers: async () => {
         try {
+          // 이미 사용자 데이터가 있으면 캐시된 데이터 사용
+          const currentUsers = get().users;
+          if (currentUsers && currentUsers.length > 0) {
+            return currentUsers;
+          }
+
           if (!supabase) {
             console.warn('⚠️ [WorkStatus] Supabase client not initialized');
             set({ users: [] });
             return [];
           }
 
-          // 먼저 profiles 테이블 시도
+          // 먼저 profiles 테이블 시도 (경고 메시지는 한 번만)
           const { data: profilesData, error: profilesError } = await supabase
             .from('profiles')
             .select('id, name, email')
@@ -770,7 +785,12 @@ const useWorkStatusStore = create(
             return profilesData;
           }
 
-          console.warn('⚠️ [WorkStatus] profiles 테이블 접근 실패 또는 데이터 없음:', profilesError?.message);
+          // profiles 실패시 한 번만 경고 (localStorage에 경고 기록)
+          const profilesWarningShown = localStorage.getItem('profiles_warning_shown');
+          if (!profilesWarningShown) {
+            console.warn('⚠️ [WorkStatus] profiles 테이블이 없습니다. users 테이블을 사용합니다.');
+            localStorage.setItem('profiles_warning_shown', 'true');
+          }
 
           // 대안: users 테이블 시도
           const { data: usersData, error: usersError } = await supabase

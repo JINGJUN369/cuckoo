@@ -33,7 +33,7 @@ const WorkStatusDashboard = () => {
   useEffect(() => {
     fetchUsers();
     fetchAdditionalWorks();
-    fetchActivityLogs();
+    // fetchActivityLogs(); // activity_logs 테이블이 없으므로 제거
     const unsubscribe = setupRealtimeSubscriptions();
     return unsubscribe;
   }, []);

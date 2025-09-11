@@ -100,7 +100,47 @@ export const useSupabaseAuth = () => {
       console.log('🔑 로그인 시도:', email);
       setLoading(true);
       
-      // users 테이블에서 사용자 확인
+      // 🔧 원래 방식: 관리자 이메일 + 8자 이상 비밀번호면 바로 로그인
+      if (email === 'jjung@cuckoo.co.kr' && password.length >= 8) {
+        console.log('✅ 관리자 직접 로그인 (원래 방식)');
+        
+        // 관리자 사용자 정보 생성
+        const userData = {
+          id: 'admin-direct-login',
+          email: email,
+          name: '정준영',
+          role: 'admin',
+          team: '관리팀',
+          status: 'approved'
+        };
+
+        const profileData = {
+          id: userData.id,
+          name: userData.name,
+          email: userData.email,
+          role: userData.role,
+          team: userData.team
+        };
+
+        // 전역 상태 및 로컬 상태 업데이트
+        globalUser = userData;
+        globalProfile = profileData;
+        
+        setUser(userData);
+        setProfile(profileData);
+
+        // 세션 스토리지에 사용자 정보 저장
+        sessionStorage.setItem('supabase_user', JSON.stringify(userData));
+        sessionStorage.setItem('supabase_profile', JSON.stringify(profileData));
+        
+        // 모든 리스너에게 상태 변경 알림
+        notifyListeners();
+        
+        console.log('✅ 관리자 직접 로그인 성공:', userData.email);
+        return { data: { user: userData }, error: null };
+      }
+      
+      // 일반 사용자는 Supabase 인증 시도
       const { data, error } = await supabase
         .from('users')
         .select('*')

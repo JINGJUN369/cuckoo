@@ -13,7 +13,6 @@ import useWorkStatusStore from '../../hooks/useWorkStatusStore';
 const WorkStatusMonitor = ({ children }) => {
   const {
     activityLogs,
-    error,
     fetchActivityLogs,
     setupRealtimeSubscriptions
   } = useWorkStatusStore();
@@ -41,8 +40,8 @@ const WorkStatusMonitor = ({ children }) => {
           return;
         }
 
-        // 초기 데이터 로드
-        await fetchActivityLogs();
+        // activity_logs 테이블이 없으므로 로그 로드 스킵
+        console.log('ℹ️ [WorkStatusMonitor] Skipping activity logs (table not available)');
         
         // 실시간 구독 설정
         const unsubscribe = setupRealtimeSubscriptions();
