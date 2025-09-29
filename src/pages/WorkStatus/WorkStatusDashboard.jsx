@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import useWorkStatusStore from '../../hooks/useWorkStatusStore';
 import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
+<<<<<<< HEAD
+=======
+import WorkFilterBar from '../../components/workstatus/WorkFilterBar';
+>>>>>>> 28f8e6c
 
 /**
  * WorkStatusDashboard - 업무현황 대시보드
@@ -15,6 +19,7 @@ const WorkStatusDashboard = () => {
   const { user, profile } = useSupabaseAuth();
   const {
     additionalWorks,
+    allAdditionalWorks,
     activityLogs,
     users,
     loading,
@@ -22,9 +27,15 @@ const WorkStatusDashboard = () => {
     ui,
     fetchAdditionalWorks,
     fetchActivityLogs,
+<<<<<<< HEAD
     fetchUsers,
     setSelectedUserId,
     setupRealtimeSubscriptions
+=======
+    setupRealtimeSubscriptions,
+    setFilter,
+    getAllAuthors
+>>>>>>> 28f8e6c
   } = useWorkStatusStore();
 
   const [timeFilter, setTimeFilter] = useState('week'); // 'today', 'week', 'month'
@@ -38,6 +49,7 @@ const WorkStatusDashboard = () => {
     return unsubscribe;
   }, []);
 
+<<<<<<< HEAD
   // 사용자 필터 변경 핸들러
   const handleUserFilterChange = (e) => {
     setSelectedUserId(e.target.value);
@@ -54,6 +66,12 @@ const WorkStatusDashboard = () => {
       const selectedUser = users.find(u => u.id === selectedUserId);
       return selectedUser ? selectedUser.name : '선택된 사용자';
     }
+=======
+  // 필터 변경 핸들러 - 실제로는 사용되지 않음 (WorkFilterBar가 직접 store 사용)
+  const handleFilterChange = (filterConfig) => {
+    console.log('🔍 [Dashboard] Filter change triggered (unused):', filterConfig);
+    // 이 함수는 더 이상 사용되지 않음 - WorkFilterBar가 직접 store의 setFilter를 사용해야 함
+>>>>>>> 28f8e6c
   };
 
   // 통계 계산
@@ -174,6 +192,14 @@ const WorkStatusDashboard = () => {
         </div>
       )}
 
+      {/* 필터 바 */}
+      <WorkFilterBar
+        onFilterChange={handleFilterChange}
+        totalCount={allAdditionalWorks.length}
+        filteredCount={additionalWorks.length}
+        allUsers={getAllAuthors()}
+      />
+
       {/* 주요 지표 카드 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
@@ -283,6 +309,7 @@ const WorkStatusDashboard = () => {
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
+<<<<<<< HEAD
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
             <span className="mr-2">👤</span>
             담당자별 현황
@@ -298,6 +325,21 @@ const WorkStatusDashboard = () => {
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium text-gray-900">{owner}</span>
                     <span className="text-xs text-gray-500">{workProgress}%</span>
+=======
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">전체 업무 진행현황</h3>
+          {console.log('🔍 [Dashboard] Rendering progress section with additionalWorks:', additionalWorks.length, 'works')}
+          <div className="space-y-3">
+            {additionalWorks.map(work => {
+              const completedTasks = work.detail_tasks?.filter(task => task.status === '완료')?.length || 0;
+              const totalTasks = work.detail_tasks?.length || 0;
+              const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+              
+              return (
+                <div key={work.id} className="border-b border-gray-100 pb-3 last:border-b-0">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-gray-900">{work.work_name}</span>
+                    <span className="text-xs text-gray-500">{progress}%</span>
+>>>>>>> 28f8e6c
                   </div>
                   <div className="w-full h-2 bg-gray-200 rounded-full">
                     <div 
@@ -306,8 +348,13 @@ const WorkStatusDashboard = () => {
                     ></div>
                   </div>
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
+<<<<<<< HEAD
                     <span>업무: {data.totalWorks}개 (완료: {data.completedWorks}개)</span>
                     <span>세부업무: {data.completedTasks}/{data.totalTasks}</span>
+=======
+                    <span>{work.work_owner} | {work.department}</span>
+                    <span>세부업무: {completedTasks}/{totalTasks}</span>
+>>>>>>> 28f8e6c
                   </div>
                   {data.totalTasks > 0 && (
                     <div className="mt-1">
@@ -322,6 +369,11 @@ const WorkStatusDashboard = () => {
                 </div>
               );
             })}
+            {additionalWorks.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <p>등록된 업무가 없습니다.</p>
+              </div>
+            )}
           </div>
           {Object.keys(stats.ownerStats).length === 0 && (
             <p className="text-gray-500 text-center py-4">등록된 업무가 없습니다.</p>
@@ -408,30 +460,60 @@ const WorkStatusDashboard = () => {
         </div>
         
         <div className="space-y-3 max-h-64 overflow-y-auto">
-          {activityLogs.length > 0 ? (
-            activityLogs.slice(0, 10).map(log => (
-              <div key={log.id} className="flex items-start space-x-3 py-2 border-b border-gray-100 last:border-b-0">
-                <div className="flex-shrink-0 w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                  <span className="text-xs">
-                    {log.action_type === 'create' ? '➕' : 
-                     log.action_type === 'update' ? '📝' : '🗑️'}
-                  </span>
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm text-gray-900">
-                    <span className="font-medium">{log.profiles?.name || '사용자'}</span>
-                    <span className="text-gray-600">
-                      {log.action_type === 'create' ? '가 새 업무를 생성했습니다' :
-                       log.action_type === 'update' ? '가 업무를 수정했습니다' :
-                       '가 업무를 삭제했습니다'}
+          {activityLogs && activityLogs.length > 0 ? (
+            activityLogs.slice(0, 10).map(log => {
+              // 업무 제목 결정 - 다양한 소스에서 찾기
+              let workTitle = log.work_name || '업무';
+              
+              // 만약 work_name이 없거나 "업무"라면 다른 소스에서 찾기
+              if (!log.work_name || log.work_name === '업무') {
+                // new_values에서 찾기
+                if (log.new_values && typeof log.new_values === 'object') {
+                  workTitle = log.new_values.work_name || workTitle;
+                }
+                
+                // old_values에서 찾기
+                if ((!workTitle || workTitle === '업무') && log.old_values && typeof log.old_values === 'object') {
+                  workTitle = log.old_values.work_name || workTitle;
+                }
+                
+                // 현재 로드된 업무 목록에서 record_id로 찾기
+                if ((!workTitle || workTitle === '업무') && log.record_id) {
+                  const relatedWork = allAdditionalWorks.find(work => work.id === log.record_id);
+                  if (relatedWork) {
+                    workTitle = relatedWork.work_name;
+                  }
+                }
+              }
+              
+              return (
+                <div key={log.id} className="flex items-start space-x-3 py-2 border-b border-gray-100 last:border-b-0">
+                  <div className="flex-shrink-0 w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                    <span className="text-xs">
+                      {log.action_type === 'create' ? '➕' : 
+                       log.action_type === 'update' ? '📝' : '🗑️'}
                     </span>
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {new Date(log.created_at).toLocaleString('ko-KR')}
-                  </p>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-900">
+                      <span className="font-medium text-indigo-600">
+                        "{workTitle}"
+                      </span>
+                      <span className="text-gray-600">
+                        {log.action_type === 'create' ? '이(가) 생성되었습니다' :
+                         log.action_type === 'update' ? '이(가) 수정되었습니다' :
+                         '이(가) 삭제되었습니다'}
+                      </span>
+                      <span className="text-gray-600"> - </span>
+                      <span className="font-medium">사용자</span>
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(log.created_at).toLocaleString('ko-KR')}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="text-center py-8 text-gray-500">
               <span className="text-3xl block mb-2">📊</span>

@@ -17,7 +17,11 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
   
   console.log(`📝 [v1.1] Stage3Form rendered - mode: ${mode}, project: ${project?.name}`);
   
-  const stage3Data = useMemo(() => project?.stage3 || {}, [project?.stage3]);
+  const stage3Data = useMemo(() => {
+    const data = project?.stage3 || {};
+    console.log(`📋 [v1.1] Stage3 data loaded:`, data);
+    return data;
+  }, [project?.stage3]);
   
   // 필드 정의 (v1.1 확장)
   const formFields = useMemo(() => [
@@ -138,6 +142,7 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
   // 필드 업데이트 핸들러
   const handleFieldChange = useCallback((field, value) => {
     console.log(`📝 [v1.1] Stage3Form field updated: ${field} = ${value}`);
+    console.log(`📝 [v1.1] onUpdate function exists: ${!!onUpdate}, mode: ${mode}`);
     
     // 터치 상태 업데이트
     setTouched(prev => ({ ...prev, [field]: true }));
@@ -157,9 +162,15 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
         ...stage3Data,
         [field]: value
       };
-      onUpdate(updatedStage3Data);
+      console.log(`📝 [v1.1] Calling onUpdate with stage3 data:`, updatedStage3Data);
+      try {
+        onUpdate(updatedStage3Data);
+        console.log(`✅ [v1.1] Stage3 onUpdate called successfully`);
+      } catch (error) {
+        console.error(`❌ [v1.1] Error calling Stage3 onUpdate:`, error);
+      }
     }
-  }, [formFields, validateField, onUpdate, mode, stage3Data]);
+  }, [formFields, validateField, onUpdate, mode]);
 
   // 체크박스 업데이트 핸들러
   const handleExecutedChange = useCallback((field, checked) => {

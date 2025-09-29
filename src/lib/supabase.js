@@ -4,12 +4,12 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY
 
-// Supabase 클라이언트 생성 (하이브리드 모드 설정)
+// Supabase 클라이언트 생성 (임시로 인증 활성화)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    // 자동 리프레시 토큰 비활성화 (커스텀 인증 사용)
-    autoRefreshToken: false,
-    persistSession: false,
+    // 임시로 인증 활성화 - 업무현황관리 시스템 테스트를 위해
+    autoRefreshToken: true,
+    persistSession: true,
     detectSessionInUrl: false
   },
   realtime: {

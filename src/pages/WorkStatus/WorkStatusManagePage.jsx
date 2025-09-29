@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import useWorkStatusStore from '../../hooks/useWorkStatusStore';
 import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
+import CreateWorkModal from '../../components/workstatus/CreateWorkModal';
+import AddTaskModal from '../../components/workstatus/AddTaskModal';
+import WorkFilterBar from '../../components/workstatus/WorkFilterBar';
+import EditWorkModal from '../../components/workstatus/EditWorkModal';
+import { canManageWork, getPermissionDeniedMessage } from '../../utils/workPermissions';
 
 /**
  * WorkStatusManagePage - 업무관리 메인 페이지
@@ -14,7 +19,11 @@ const WorkStatusManagePage = () => {
   const { user, profile } = useSupabaseAuth();
   const {
     additionalWorks,
+<<<<<<< HEAD
     users,
+=======
+    allAdditionalWorks,
+>>>>>>> 28f8e6c
     loading,
     error,
     ui,
@@ -28,8 +37,13 @@ const WorkStatusManagePage = () => {
     updateTaskStatus,
     updateProgressContent,
     deleteDetailTask,
+    deleteAdditionalWork,
+    completeAdditionalWork,
+    reorderDetailTasks,
     setupRealtimeSubscriptions,
-    clearError
+    clearError,
+    setFilter,
+    getAllAuthors
   } = useWorkStatusStore();
 
   const [showCreateWorkModal, setShowCreateWorkModal] = useState(false);
@@ -39,6 +53,7 @@ const WorkStatusManagePage = () => {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [editingProgress, setEditingProgress] = useState({});
+<<<<<<< HEAD
   const [newWorkData, setNewWorkData] = useState({
     work_name: '',
     work_owner: '',
@@ -128,6 +143,12 @@ const WorkStatusManagePage = () => {
     assigned_to: '',
     due_date: ''
   });
+=======
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedWork, setSelectedWork] = useState(null);
+  const [draggedTask, setDraggedTask] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+>>>>>>> 28f8e6c
 
   // 데이터 로드 및 실시간 구독
   useEffect(() => {
@@ -163,9 +184,23 @@ const WorkStatusManagePage = () => {
     }
   }, [error]);
 
+<<<<<<< HEAD
   // 새업무 추가 핸들러
   const handleCreateWork = async (e) => {
     e.preventDefault();
+=======
+  // 필터 변경 핸들러
+  const handleFilterChange = (filterConfig) => {
+    const currentUser = profile?.name || user?.name || user?.email || '';
+    setFilter({
+      ...filterConfig,
+      currentUser: currentUser
+    });
+  };
+
+  // 세부업무 추가 핸들러
+  const handleAddTask = async (workId, taskData) => {
+>>>>>>> 28f8e6c
     try {
       // work_owner는 서버에서 자동으로 설정되므로 제거
       const { work_owner, ...workDataToSubmit } = newWorkData;
@@ -274,6 +309,99 @@ const WorkStatusManagePage = () => {
     }
   };
 
+  // 드래그 핸들러들
+  const handleDragStart = (e, task, index) => {
+    console.log('🔄 [Drag] Start:', task.task_name, 'at index', index);
+    setDraggedTask({ task, originalIndex: index });
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = async (e, workId, dropIndex) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+    
+    console.log('🔄 [Drag] Drop:', {
+      draggedTask: draggedTask?.task.task_name,
+      originalIndex: draggedTask?.originalIndex,
+      dropIndex,
+      workId
+    });
+
+    if (!draggedTask || draggedTask.originalIndex === dropIndex) {
+      console.log('🔄 [Drag] No change needed');
+      setDraggedTask(null);
+      return;
+    }
+
+    try {
+      console.log('🔄 [Drag] Calling reorderDetailTasks...');
+      await reorderDetailTasks(workId, draggedTask.originalIndex, dropIndex);
+      console.log('✅ [Drag] Reorder completed');
+      setDraggedTask(null);
+    } catch (error) {
+      console.error('❌ [Drag] Failed to reorder tasks:', error);
+      setDraggedTask(null);
+    }
+  };
+
+  // 업무 수정 핸들러
+  const handleEditWork = (work) => {
+    if (!canManageWork(work, user, profile)) {
+      alert(getPermissionDeniedMessage('수정'));
+      return;
+    }
+    setSelectedWork(work);
+    setShowEditModal(true);
+  };
+
+  // 업무 삭제 핸들러
+  const handleDeleteWork = async (work) => {
+    if (!canManageWork(work, user, profile)) {
+      alert(getPermissionDeniedMessage('삭제'));
+      return;
+    }
+
+    if (!window.confirm(`'${work.work_name}' 업무를 완전히 삭제하시겠습니까?\n\n⚠️ 이 작업은 되돌릴 수 없으며, 모든 세부업무도 함께 삭제됩니다.`)) {
+      return;
+    }
+
+    try {
+      await deleteAdditionalWork(work.id);
+    } catch (error) {
+      console.error('업무 삭제 실패:', error);
+      alert('업무 삭제에 실패했습니다. 다시 시도해주세요.');
+    }
+  };
+
+  // 업무 종료 핸들러
+  const handleCompleteWork = async (work) => {
+    if (!canManageWork(work, user, profile)) {
+      alert(getPermissionDeniedMessage('종료'));
+      return;
+    }
+
+    if (!window.confirm(`'${work.work_name}' 업무를 종료하시겠습니까?\n\n✅ 종료된 업무는 완료된 업무 페이지에서 확인할 수 있습니다.`)) {
+      return;
+    }
+
+    try {
+      await completeAdditionalWork(work.id);
+    } catch (error) {
+      console.error('업무 종료 실패:', error);
+      alert('업무 종료에 실패했습니다. 다시 시도해주세요.');
+    }
+  };
+
   // 상태별 색상 스타일
   const getStatusStyle = (status) => {
     const styles = {
@@ -357,6 +485,14 @@ const WorkStatusManagePage = () => {
           </div>
         </div>
       </div>
+
+      {/* 필터 바 */}
+      <WorkFilterBar
+        onFilterChange={handleFilterChange}
+        totalCount={allAdditionalWorks.length}
+        filteredCount={additionalWorks.length}
+        allUsers={getAllAuthors()}
+      />
 
       {/* 에러 메시지 */}
       {error && (
@@ -614,6 +750,64 @@ const WorkStatusManagePage = () => {
                       </div>
                     </div>
                   </div>
+<<<<<<< HEAD
+=======
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => {
+                        setSelectedWorkId(work.id);
+                        setShowTaskModal(true);
+                      }}
+                      className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-3 py-2 rounded-lg transition-colors flex items-center text-sm"
+                    >
+                      <span className="mr-1">➕</span>
+                      세부업무
+                    </button>
+                    
+                    {(() => {
+                      const canManage = canManageWork(work, user, profile);
+                      console.log('🔍 [WorkStatusManagePage] Permission check:', {
+                        workId: work.id,
+                        workName: work.work_name,
+                        workOwner: work.work_owner,
+                        currentUserName: profile?.name || user?.name || user?.email || '',
+                        currentUserEmail: user?.email || profile?.email || '',
+                        profileRole: profile?.role,
+                        canManage: canManage
+                      });
+                      return canManage;
+                    })() && (
+                      <>
+                        <button
+                          onClick={() => handleEditWork(work)}
+                          className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-3 py-2 rounded-lg transition-colors flex items-center text-sm"
+                          title="업무 수정"
+                        >
+                          <span className="mr-1">✏️</span>
+                          수정
+                        </button>
+                        
+                        <button
+                          onClick={() => handleCompleteWork(work)}
+                          className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-3 py-2 rounded-lg transition-colors flex items-center text-sm"
+                          title="업무 종료"
+                        >
+                          <span className="mr-1">✅</span>
+                          종료
+                        </button>
+                        
+                        <button
+                          onClick={() => handleDeleteWork(work)}
+                          className="bg-red-500 bg-opacity-20 hover:bg-opacity-30 text-white px-3 py-2 rounded-lg transition-colors flex items-center text-sm"
+                          title="업무 삭제"
+                        >
+                          <span className="mr-1">🗑️</span>
+                          삭제
+                        </button>
+                      </>
+                    )}
+                  </div>
+>>>>>>> 28f8e6c
                 </div>
                 {work.description && (
                   <p className={`mt-3 ${colors.text}`}>{work.description}</p>
@@ -629,22 +823,85 @@ const WorkStatusManagePage = () => {
                       세부업무 ({work.detail_tasks.length}개)
                     </h4>
                     
-                    {work.detail_tasks.map((task) => (
-                      <div key={task.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="flex-1">
-                            <h5 className="font-medium text-gray-900">{task.task_name}</h5>
-                            {task.assignee && (
-                              <p className="text-sm text-gray-600 mt-1">담당자: {task.assignee}</p>
-                            )}
+                    {work.detail_tasks.map((task, index) => {
+                      // D-Day 계산
+                      const getDDay = (endDate) => {
+                        if (!endDate) return null;
+                        const today = new Date();
+                        const end = new Date(endDate);
+                        const diffTime = end - today;
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        
+                        if (diffDays < 0) return { text: `D+${Math.abs(diffDays)}`, color: 'text-red-600 bg-red-50' };
+                        if (diffDays === 0) return { text: 'D-Day', color: 'text-orange-600 bg-orange-50' };
+                        if (diffDays <= 3) return { text: `D-${diffDays}`, color: 'text-yellow-600 bg-yellow-50' };
+                        return { text: `D-${diffDays}`, color: 'text-blue-600 bg-blue-50' };
+                      };
+                      
+                      const dday = getDDay(task.end_date);
+                      const isDragOver = dragOverIndex === index;
+                      const isDragging = draggedTask?.task.id === task.id;
+                      
+                      // 디버깅: 세부업무 데이터 확인
+                      console.log('🔍 [Debug] Task data:', {
+                        task_name: task.task_name,
+                        end_date: task.end_date,
+                        assignee: task.assignee,
+                        created_at: task.created_at,
+                        dday: dday
+                      });
+                      
+                      return (
+                      <div 
+                        key={task.id} 
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, task, index)}
+                        onDragOver={(e) => handleDragOver(e, index)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, work.id, index)}
+                        className={`border border-gray-200 rounded-lg p-3 hover:shadow-md transition-all duration-200 
+                          ${isDragOver ? 'border-indigo-300 bg-indigo-50' : 'bg-gray-50 hover:bg-white'} 
+                          ${isDragging ? 'opacity-50 transform rotate-1' : ''}`}
+                      >
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="flex items-center flex-1 min-w-0">
+                            {/* 드래그 핸들 */}
+                            <div 
+                              className="mr-2 cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 text-sm select-none" 
+                              title="드래그하여 순서 변경"
+                              onMouseDown={(e) => {
+                                // 드래그 핸들 클릭 시에만 드래그 가능하도록 설정
+                                const card = e.target.closest('[draggable="true"]');
+                                if (card) {
+                                  card.draggable = true;
+                                }
+                              }}
+                            >
+                              ⋮⋮
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2">
+                                <h5 className="font-medium text-gray-900 truncate">{task.task_name}</h5>
+                                {dday && (
+                                  <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${dday.color}`}>
+                                    {dday.text}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center space-x-4 mt-1 text-xs text-gray-500">
+                                {task.end_date && <span className="text-red-600 font-medium">⏰ 마감: {new Date(task.end_date).toLocaleDateString('ko-KR')}</span>}
+                                {task.assignee && <span>👤 {task.assignee}</span>}
+                                {task.created_at && <span>➕ {new Date(task.created_at).toLocaleDateString('ko-KR')}</span>}
+                              </div>
+                            </div>
                           </div>
                           
-                          <div className="flex items-center space-x-3">
+                          <div className="flex items-center space-x-2 flex-shrink-0">
                             {/* 상태 변경 드롭다운 */}
                             <select
                               value={task.status}
                               onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                              className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusStyle(task.status)}`}
+                              className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusStyle(task.status)}`}
                             >
                               <option value="대기">대기</option>
                               <option value="진행">진행</option>
@@ -653,6 +910,7 @@ const WorkStatusManagePage = () => {
                               <option value="피드백">피드백</option>
                             </select>
                             
+<<<<<<< HEAD
                             {/* 삭제 버튼 - 권한이 있는 사용자만 표시 */}
                             {canDeleteDetailTask(work, task) && (
                               <button
@@ -663,68 +921,82 @@ const WorkStatusManagePage = () => {
                                 🗑️
                               </button>
                             )}
+=======
+                            {/* 삭제 버튼 */}
+                            <button
+                              onClick={() => deleteDetailTask(task.id)}
+                              className="text-gray-400 hover:text-red-500 transition-colors text-sm"
+                              title="세부업무 삭제"
+                            >
+                              ×
+                            </button>
+>>>>>>> 28f8e6c
                           </div>
                         </div>
                         
-                        {/* 진행현황 */}
-                        <div className="mt-3">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            진행현황
-                          </label>
-                          {editingProgress[task.id] ? (
-                            <div className="space-y-2">
-                              <textarea
-                                defaultValue={task.progress_content || ''}
-                                rows={3}
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                                placeholder="진행현황을 입력하세요..."
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' && e.ctrlKey) {
-                                    handleProgressSave(task.id, e.target.value);
-                                  }
-                                }}
-                              />
-                              <div className="flex space-x-2">
-                                <button
-                                  onClick={(e) => {
-                                    const textarea = e.target.closest('.space-y-2').querySelector('textarea');
-                                    handleProgressSave(task.id, textarea.value);
-                                  }}
-                                  className="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700"
-                                >
-                                  저장
-                                </button>
-                                <button
-                                  onClick={() => setEditingProgress({ ...editingProgress, [task.id]: false })}
-                                  className="bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-400"
-                                >
-                                  취소
-                                </button>
-                              </div>
+                        {/* 진행현황 - 컴팩트하게 수정 */}
+                        {task.progress_content && (
+                          <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
+                            <div className="flex items-start space-x-2">
+                              <span className="text-blue-600 text-xs mt-0.5">📝</span>
+                              <p className="text-blue-900 flex-1 line-clamp-2">{task.progress_content}</p>
+                              <button
+                                onClick={() => setEditingProgress({ ...editingProgress, [task.id]: true })}
+                                className="text-blue-600 hover:text-blue-800 text-xs"
+                                title="편집"
+                              >
+                                ✎️
+                              </button>
                             </div>
-                          ) : (
-                            <div
-                              onClick={() => setEditingProgress({ ...editingProgress, [task.id]: true })}
-                              className="min-h-[60px] p-3 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
-                            >
-                              {task.progress_content ? (
-                                <p className="text-gray-900 whitespace-pre-wrap">{task.progress_content}</p>
-                              ) : (
-                                <p className="text-gray-500 italic">클릭해서 진행현황을 입력하세요...</p>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
                         
-                        {/* 생성 정보 */}
-                        <div className="mt-3 text-xs text-gray-500 flex justify-between">
-                          <span>생성: {new Date(task.created_at).toLocaleString('ko-KR')}</span>
-                          {task.updated_at !== task.created_at && (
-                            <span>수정: {new Date(task.updated_at).toLocaleString('ko-KR')}</span>
-                          )}
-                        </div>
+                        {/* 진행현황 편집 모드 */}
+                        {editingProgress[task.id] && (
+                          <div className="mt-2 space-y-2 p-2 bg-white border border-gray-300 rounded">
+                            <textarea
+                              defaultValue={task.progress_content || ''}
+                              rows={2}
+                              className="w-full p-2 border border-gray-200 rounded text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                              placeholder="진행현황을 입력하세요..."
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && e.ctrlKey) {
+                                  handleProgressSave(task.id, e.target.value);
+                                }
+                              }}
+                            />
+                            <div className="flex justify-end space-x-1">
+                              <button
+                                onClick={(e) => {
+                                  const textarea = e.target.closest('.space-y-2').querySelector('textarea');
+                                  handleProgressSave(task.id, textarea.value);
+                                }}
+                                className="bg-indigo-600 text-white px-2 py-1 rounded text-xs hover:bg-indigo-700"
+                              >
+                                저장
+                              </button>
+                              <button
+                                onClick={() => setEditingProgress({ ...editingProgress, [task.id]: false })}
+                                className="bg-gray-300 text-gray-700 px-2 py-1 rounded text-xs hover:bg-gray-400"
+                              >
+                                취소
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* 진행현황 없을 때 추가 버튼 */}
+                        {!task.progress_content && !editingProgress[task.id] && (
+                          <button
+                            onClick={() => setEditingProgress({ ...editingProgress, [task.id]: true })}
+                            className="mt-2 w-full py-1 text-xs text-gray-500 border border-dashed border-gray-300 rounded hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                          >
+                            + 진행현황 추가
+                          </button>
+                        )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-gray-500">
@@ -748,9 +1020,13 @@ const WorkStatusManagePage = () => {
         )}
       </div>
 
-      {/* 모달들은 여기에 추가 예정 */}
-      {/* TODO: CreateWorkModal, TaskModal 컴포넌트 구현 */}
+      {/* 모달 컴포넌트들 */}
+      <CreateWorkModal
+        isOpen={showCreateWorkModal}
+        onClose={() => setShowCreateWorkModal(false)}
+      />
       
+<<<<<<< HEAD
       {showCreateWorkModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -1081,6 +1357,25 @@ const WorkStatusManagePage = () => {
           </div>
         </div>
       )}
+=======
+      <AddTaskModal
+        isOpen={showTaskModal}
+        onClose={() => {
+          setShowTaskModal(false);
+          setSelectedWorkId(null);
+        }}
+        workId={selectedWorkId}
+      />
+      
+      <EditWorkModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setSelectedWork(null);
+        }}
+        work={selectedWork}
+      />
+>>>>>>> 28f8e6c
     </div>
   );
 };

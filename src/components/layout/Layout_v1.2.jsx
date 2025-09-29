@@ -46,7 +46,11 @@ const Layout = React.memo(({ children }) => {
     { path: '/work-status', label: '업무현황', icon: '📊', section: 'work' },
     { path: '/work-status/manage', label: '업무관리', icon: '📋', section: 'work' },
     { path: '/work-status/calendar', label: '업무달력', icon: '📅', section: 'work' },
+<<<<<<< HEAD
     { path: '/work-status/completed', label: '종결된 업무', icon: '✅', section: 'work' },
+=======
+    { path: '/work-status/completed', label: '완료된 업무', icon: '✅', section: 'work' },
+>>>>>>> 28f8e6c
   ], []);
 
   // 관리자 메뉴 (관리자만 표시)

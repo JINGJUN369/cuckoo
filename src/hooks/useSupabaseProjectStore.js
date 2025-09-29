@@ -641,22 +641,26 @@ export const SupabaseProjectProvider = React.memo(({ children }) => {
         return;
       }
       
-      if (user) {
-        console.log('🔄 [SupabaseProjectStore] 사용자 변경으로 프로젝트 로드 시작');
-        dispatch({ type: actionTypes.SET_LOADING, payload: true });
+      // 인증 상태와 관계없이 프로젝트 데이터 로드 (public 테이블이므로)
+      console.log('🔄 [SupabaseProjectStore] 프로젝트 로드 시작');
+      dispatch({ type: actionTypes.SET_LOADING, payload: true });
+      
+      try {
+        if (user) {
+          console.log('👤 [SupabaseProjectStore] 로그인된 사용자:', { userId: user?.id, email: user?.email, role: user?.role });
+        } else {
+          console.log('🚪 [SupabaseProjectStore] 비로그인 상태로 공개 데이터 접근');
+        }
         
-        try {
-          console.log('📋 [SupabaseProjectStore] 사용자 정보:', { userId: user?.id, email: user?.email, role: user?.role });
-          
-          // Supabase 연결 테스트
-          console.log('🔗 [SupabaseProjectStore] Supabase URL:', supabase.supabaseUrl);
-          const { data: testData, error: testError } = await supabase.from('users').select('count').limit(1);
-          console.log('🧪 [SupabaseProjectStore] 연결 테스트:', testError ? `오류: ${testError.message}` : '성공');
-          
-          const { data, error } = await supabase
-            .from('projects')
-            .select('*')
-            .order('created_at', { ascending: false });
+        // Supabase 연결 테스트
+        console.log('🔗 [SupabaseProjectStore] Supabase URL:', supabase.supabaseUrl);
+        const { data: testData, error: testError } = await supabase.from('users').select('count').limit(1);
+        console.log('🧪 [SupabaseProjectStore] 연결 테스트:', testError ? `오류: ${testError.message}` : '성공');
+        
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .order('created_at', { ascending: false });
 
           if (error) {
             console.error('💥 [SupabaseProjectStore] 프로젝트 쿼리 오류:', error);
@@ -681,16 +685,6 @@ export const SupabaseProjectProvider = React.memo(({ children }) => {
         } finally {
           dispatch({ type: actionTypes.SET_LOADING, payload: false });
         }
-      } else {
-        // 사용자가 없을 때도 로딩 상태 종료
-        console.log('🚪 [SupabaseProjectStore] 사용자 없음 - 빈 프로젝트 리스트 설정', {
-          isInitialized,
-          user,
-          userType: typeof user
-        });
-        dispatch({ type: actionTypes.SET_LOADING, payload: false });
-        dispatch({ type: actionTypes.SET_PROJECTS, payload: [] });
-      }
     };
     
     loadData();

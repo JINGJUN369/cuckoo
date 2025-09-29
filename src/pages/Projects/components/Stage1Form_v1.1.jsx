@@ -17,7 +17,11 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
   
   console.log(`📝 [v1.1] Stage1Form rendered - mode: ${mode}, project: ${project?.name}`);
   
-  const stage1Data = useMemo(() => project?.stage1 || {}, [project?.stage1]);
+  const stage1Data = useMemo(() => {
+    const data = project?.stage1 || {};
+    console.log(`📋 [v1.1] Stage1 data loaded:`, data);
+    return data;
+  }, [project?.stage1]);
   
   // 필드 정의 (v1.1 확장)
   const formFields = useMemo(() => [
@@ -137,25 +141,15 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
   // 필드 업데이트 핸들러
   const handleFieldChange = useCallback((field, value) => {
     console.log(`📝 [v1.1] Stage1Form field updated: ${field} = ${value}`);
-    console.log(`📝 [v1.1] Mode: ${mode}, onUpdate exists: ${!!onUpdate}`);
-    console.log(`📝 [v1.1] Current stage1Data:`, stage1Data);
     
     // 터치 상태 업데이트
-    setTouched(prev => {
-      const newTouched = { ...prev, [field]: true };
-      console.log(`📝 [v1.1] Updated touched state:`, newTouched);
-      return newTouched;
-    });
+    setTouched(prev => ({ ...prev, [field]: true }));
     
     // 유효성 검사
     const fieldDef = formFields.find(f => f.key === field);
     const error = validateField(field, value, fieldDef?.required);
     
-    setValidationErrors(prev => {
-      const newErrors = { ...prev, [field]: error };
-      console.log(`📝 [v1.1] Updated validation errors:`, newErrors);
-      return newErrors;
-    });
+    setValidationErrors(prev => ({ ...prev, [field]: error }));
     
     // 상위로 변경사항 전달 - 전체 stage1 데이터 업데이트
     if (onUpdate && mode === 'edit') {
@@ -163,8 +157,7 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
         ...stage1Data,
         [field]: value
       };
-      console.log(`📝 [v1.1] Calling onUpdate with:`, updatedStage1Data);
-      console.log(`📝 [v1.1] onUpdate function:`, onUpdate);
+      console.log(`📝 [v1.1] Calling onUpdate with updated data for field ${field}`);
       
       try {
         onUpdate(updatedStage1Data);
@@ -175,7 +168,7 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
     } else {
       console.log(`📝 [v1.1] Not calling onUpdate - mode: ${mode}, onUpdate: ${!!onUpdate}`);
     }
-  }, [formFields, validateField, onUpdate, mode, stage1Data]);
+  }, [formFields, validateField, onUpdate, mode]);
 
   // 체크박스 업데이트 핸들러
   const handleExecutedChange = useCallback((field, checked) => {

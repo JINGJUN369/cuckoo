@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import useWorkStatusStore from '../../hooks/useWorkStatusStore';
 import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
+<<<<<<< HEAD
+=======
+import WorkFilterBar from '../../components/workstatus/WorkFilterBar';
+import Tooltip from '../../components/ui/Tooltip';
+import { getWorkColor, getPriorityText, isDetailTask, clearColorCache } from '../../utils/colorUtils';
+>>>>>>> 28f8e6c
 
 /**
  * WorkStatusCalendar - 업무달력 페이지
@@ -15,18 +21,29 @@ const WorkStatusCalendar = () => {
   const { user, profile } = useSupabaseAuth();
   const {
     additionalWorks,
+<<<<<<< HEAD
     users,
+=======
+    allAdditionalWorks,
+>>>>>>> 28f8e6c
     loading,
     error,
     ui,
     fetchAdditionalWorks,
+<<<<<<< HEAD
     fetchUsers,
     setSelectedUserId,
     setupRealtimeSubscriptions
+=======
+    setupRealtimeSubscriptions,
+    setFilter,
+    getAllAuthors
+>>>>>>> 28f8e6c
   } = useWorkStatusStore();
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState('month'); // 'month', 'week', 'day'
+  const [expandedDays, setExpandedDays] = useState(new Set()); // 확장된 날짜들
 
   // 데이터 로드 및 실시간 구독
   useEffect(() => {
@@ -36,6 +53,7 @@ const WorkStatusCalendar = () => {
     return unsubscribe;
   }, []);
 
+<<<<<<< HEAD
   // 사용자 필터 변경 핸들러
   const handleUserFilterChange = (e) => {
     setSelectedUserId(e.target.value);
@@ -52,6 +70,31 @@ const WorkStatusCalendar = () => {
       const selectedUser = users.find(u => u.id === selectedUserId);
       return selectedUser ? selectedUser.name : '선택된 사용자';
     }
+=======
+  // 필터 변경시 색상 캐시 초기화
+  useEffect(() => {
+    clearColorCache();
+  }, [additionalWorks]);
+
+  // 디버깅: additionalWorks 데이터 구조 확인 (한 번만 실행)
+  useEffect(() => {
+    if (additionalWorks && additionalWorks.length > 0) {
+      console.log('🔍 업무달력 데이터 로드:', additionalWorks.length + '개 업무');
+      const firstWork = additionalWorks[0];
+      if (firstWork?.detail_tasks?.length > 0) {
+        console.log('✅ 세부업무가 포함된 업무:', firstWork.work_name, '- 세부업무', firstWork.detail_tasks.length + '개');
+      }
+    }
+  }, [additionalWorks]);
+
+  // 필터 변경 핸들러
+  const handleFilterChange = (filterConfig) => {
+    const currentUser = profile?.name || user?.name || user?.email || '';
+    setFilter({
+      ...filterConfig,
+      currentUser: currentUser
+    });
+>>>>>>> 28f8e6c
   };
 
   // 달력 데이터 생성
@@ -67,6 +110,7 @@ const WorkStatusCalendar = () => {
     const current = new Date(startDate);
 
     for (let i = 0; i < 42; i++) {
+<<<<<<< HEAD
       const currentDateStr = current.toISOString().split('T')[0];
       
       // 프로젝트 기간 이벤트
@@ -94,6 +138,45 @@ const WorkStatusCalendar = () => {
         );
 
       const allEvents = [...projectEvents, ...detailEvents];
+=======
+      // 업무와 세부업무를 모두 포함한 이벤트 목록 생성
+      const workEvents = (additionalWorks || []).filter(work => {
+        const startDate = new Date(work.start_date);
+        const endDate = new Date(work.end_date);
+        return current >= startDate && current <= endDate;
+      }).map(work => ({ ...work, type: 'work' }));
+
+      // 세부업무를 각각의 실제 마감일에 표시
+      const detailEvents = [];
+      (additionalWorks || []).forEach(work => {
+        if (work.detail_tasks && Array.isArray(work.detail_tasks)) {
+          work.detail_tasks.forEach(task => {
+            if (task.end_date) {
+              // 세부업무의 실제 마감일을 확인
+              const taskEndDate = new Date(task.end_date);
+              const currentDay = new Date(current);
+              
+              if (taskEndDate.toDateString() === currentDay.toDateString()) {
+                detailEvents.push({ 
+                  ...task, 
+                  type: 'detail', 
+                  additional_work_id: work.id,
+                  parent_work_name: work.work_name
+                  // task.end_date 그대로 사용 (덮어쓰지 않음)
+                });
+              }
+            }
+          });
+        }
+      });
+      
+      // 디버깅: 현재 날짜와 이벤트 수 확인
+      if (detailEvents.length > 0) {
+        console.log(`📅 ${current.toDateString()}: 세부업무 ${detailEvents.length}개, 업무 ${workEvents.length}개`);
+      }
+
+      const allEvents = [...workEvents, ...detailEvents];
+>>>>>>> 28f8e6c
 
       days.push({
         date: new Date(current),
@@ -120,6 +203,7 @@ const WorkStatusCalendar = () => {
     setCurrentDate(new Date());
   };
 
+<<<<<<< HEAD
   // 프로젝트별 색상 팔레트 (노션 스타일)
   const projectColorPalettes = [
     { light: 'bg-blue-200', medium: 'bg-blue-400', dark: 'bg-blue-600', text: 'text-blue-800' },
@@ -177,6 +261,195 @@ const WorkStatusCalendar = () => {
       bg: palette[colorIntensity],
       border: palette.dark,
       text: colorIntensity === 'dark' ? 'text-white' : palette.text
+=======
+  // 날짜 펼치기/접기 토글
+  const toggleDayExpansion = (dayString) => {
+    setExpandedDays(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(dayString)) {
+        newSet.delete(dayString);
+      } else {
+        newSet.add(dayString);
+      }
+      return newSet;
+    });
+  };
+
+  // 구글 캘린더 연한 색상 체계 적용
+  const getProjectColor = (workName) => {
+    const projectColors = {
+      '실링팬': { 
+        // 연한 파란색
+        main: 'bg-blue-300', 
+        light: 'bg-blue-50', 
+        dark: 'bg-blue-400',
+        text: 'text-blue-800',
+        textLight: 'text-blue-600',
+        border: 'border-blue-200'
+      },
+      '신제품': { 
+        // 연한 초록색
+        main: 'bg-green-300', 
+        light: 'bg-green-50', 
+        dark: 'bg-green-400',
+        text: 'text-green-800',
+        textLight: 'text-green-600',
+        border: 'border-green-200'
+      },
+      '마케팅': { 
+        // 연한 주황색
+        main: 'bg-orange-300', 
+        light: 'bg-orange-50', 
+        dark: 'bg-orange-400',
+        text: 'text-orange-800',
+        textLight: 'text-orange-600',
+        border: 'border-orange-200'
+      },
+      '기획': { 
+        // 연한 보라색
+        main: 'bg-purple-300', 
+        light: 'bg-purple-50', 
+        dark: 'bg-purple-400',
+        text: 'text-purple-800',
+        textLight: 'text-purple-600',
+        border: 'border-purple-200'
+      },
+      '개발': { 
+        // 연한 빨간색
+        main: 'bg-red-300', 
+        light: 'bg-red-50', 
+        dark: 'bg-red-400',
+        text: 'text-red-800',
+        textLight: 'text-red-600',
+        border: 'border-red-200'
+      },
+      '디자인': { 
+        // 연한 노란색
+        main: 'bg-yellow-300', 
+        light: 'bg-yellow-50', 
+        dark: 'bg-yellow-400',
+        text: 'text-yellow-800',
+        textLight: 'text-yellow-600',
+        border: 'border-yellow-200'
+      },
+      '고객': { 
+        // 연한 청록색
+        main: 'bg-teal-300', 
+        light: 'bg-teal-50', 
+        dark: 'bg-teal-400',
+        text: 'text-teal-800',
+        textLight: 'text-teal-600',
+        border: 'border-teal-200'
+      },
+      '품질': { 
+        // 연한 분홍색
+        main: 'bg-pink-300', 
+        light: 'bg-pink-50', 
+        dark: 'bg-pink-400',
+        text: 'text-pink-800',
+        textLight: 'text-pink-600',
+        border: 'border-pink-200'
+      },
+      '영업': { 
+        // 연한 인디고색
+        main: 'bg-indigo-300', 
+        light: 'bg-indigo-50', 
+        dark: 'bg-indigo-400',
+        text: 'text-indigo-800',
+        textLight: 'text-indigo-600',
+        border: 'border-indigo-200'
+      }
+    };
+
+    // 업무명에서 프로젝트 키워드 찾기
+    const projectKey = Object.keys(projectColors).find(key => 
+      workName?.includes(key)
+    );
+    
+    return projectKey ? projectColors[projectKey] : { 
+      main: 'bg-gray-300', 
+      light: 'bg-gray-50', 
+      dark: 'bg-gray-400',
+      text: 'text-gray-800',
+      textLight: 'text-gray-600',
+      border: 'border-gray-200'
+    };
+  };
+
+  // 업무명 표시 함수 (요청서 기준 개선 - 100% 폭 활용)
+  const formatWorkName = (workName, isDetail = false, cellWidth = 'normal') => {
+    if (!workName) return '';
+    
+    // 셀 크기에 따른 최대 글자 수 설정
+    const maxLength = cellWidth === 'expanded' ? 25 : isDetail ? 12 : 15;
+    
+    // 텍스트가 maxLength를 초과하면 중간 생략
+    if (workName.length > maxLength) {
+      const start = workName.substring(0, Math.floor(maxLength * 0.6));
+      const end = workName.substring(workName.length - Math.floor(maxLength * 0.3));
+      return `${start}...${end}`;
+    }
+    
+    return workName;
+  };
+
+  // 이벤트 우선순위 계산
+  const getEventPriority = (event) => {
+    const isDetail = event.type === 'detail' || isDetailTask(event);
+    const daysLeft = event.dday?.days || 999;
+    
+    // 우선순위 점수 (낮을수록 높은 우선순위)
+    let priority = 100;
+    
+    if (daysLeft <= 0) priority = 1; // 마감 당일/지남
+    else if (daysLeft <= 1) priority = 2; // 1일 남음
+    else if (daysLeft <= 3) priority = 3; // 3일 남음
+    else if (daysLeft <= 7) priority = 4; // 1주일 남음
+    else if (!isDetail) priority = 5; // 메인 업무
+    else priority = 10; // 세부 업무
+    
+    return priority;
+  };
+
+  // 이벤트 색상 및 스타일 결정 (개선됨)
+  const getEventStyle = (event) => {
+    const isDetail = event.type === 'detail' || isDetailTask(event);
+    const workName = event.task_name || event.work_name || '';
+    const projectColors = getProjectColor(workName);
+    const priority = getEventPriority(event);
+    
+    // 우선순위에 따른 색상 강도
+    let colorClass, borderClass, bgClass;
+    
+    if (priority <= 2) { // 긴급/임박
+      colorClass = 'text-white';
+      borderClass = 'border-red-500';
+      bgClass = projectColors.dark;
+    } else if (priority <= 4) { // 중요
+      colorClass = projectColors.text;
+      borderClass = priority <= 3 ? 'border-orange-400' : 'border-yellow-400';
+      bgClass = projectColors.main;
+    } else if (!isDetail) { // 메인 업무
+      colorClass = projectColors.text;
+      borderClass = projectColors.border;
+      bgClass = projectColors.main;
+    } else { // 세부 업무
+      colorClass = projectColors.text;
+      borderClass = projectColors.border;
+      bgClass = projectColors.light;
+    }
+    
+    const priorityText = getPriorityText(event);
+    
+    return {
+      colorClass,
+      borderClass,
+      priorityText,
+      isDetail,
+      bgClass,
+      projectColors,
+      priority
+>>>>>>> 28f8e6c
     };
   };
 
@@ -257,6 +530,15 @@ const WorkStatusCalendar = () => {
         </div>
       )}
 
+      {/* 필터 바 */}
+      <WorkFilterBar
+        onFilterChange={handleFilterChange}
+        totalCount={allAdditionalWorks.length}
+        filteredCount={additionalWorks.length}
+        allUsers={getAllAuthors()}
+      />
+
+
       {/* 달력 네비게이션 */}
       <div className="bg-white rounded-lg shadow mb-6">
         <div className="flex justify-between items-center p-4 border-b border-gray-200">
@@ -279,6 +561,7 @@ const WorkStatusCalendar = () => {
           </div>
           
           {/* 범례 */}
+<<<<<<< HEAD
           <div className="flex items-center space-x-4 text-sm">
             <div className="flex items-center space-x-1">
               <div className="w-4 h-3 bg-blue-200 rounded border-l-2 border-blue-400"></div>
@@ -295,6 +578,34 @@ const WorkStatusCalendar = () => {
             <div className="flex items-center space-x-1">
               <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-200 to-purple-200"></div>
               <span>프로젝트별 색상</span>
+=======
+          <div className="flex items-center space-x-6 text-sm">
+            {/* 업무 타입 범례 */}
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-1">
+                <div className="w-4 h-3 bg-blue-300 rounded border"></div>
+                <span>업무</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <div className="w-4 h-3 bg-blue-600 rounded border"></div>
+                <span>세부업무</span>
+              </div>
+            </div>
+            {/* 우선순위 범례 */}
+            <div className="flex items-center space-x-3 pl-4 border-l border-gray-300">
+              <div className="flex items-center space-x-1">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <span>지연</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                <span>오늘</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                <span>임박</span>
+              </div>
+>>>>>>> 28f8e6c
             </div>
           </div>
         </div>
@@ -315,16 +626,23 @@ const WorkStatusCalendar = () => {
             ))}
           </div>
 
-          {/* 날짜 그리드 */}
-          <div className="grid grid-cols-7 gap-2">
+          {/* 날짜 그리드 - 개선된 레이아웃 */}
+          <div className="grid grid-cols-7 gap-1">
             {calendarData.map((day, index) => (
               <div
                 key={index}
-                className={`min-h-[100px] p-2 border rounded-lg ${
+                className={`min-h-[120px] p-1 border rounded-lg transition-all duration-300 ${
                   day.isCurrentMonth ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-100'
                 } ${
                   day.isToday ? 'ring-2 ring-indigo-500' : ''
+                } ${
+                  expandedDays.has(day.date.toDateString()) ? 'min-h-[280px]' : ''
                 }`}
+                style={{
+                  minHeight: expandedDays.has(day.date.toDateString()) && day.events.length > 6 
+                    ? `${Math.max(280, 120 + (day.events.length - 6) * 25)}px` 
+                    : '120px'
+                }}
               >
                 {/* 날짜 */}
                 <div className={`text-sm font-medium mb-1 ${
@@ -335,6 +653,7 @@ const WorkStatusCalendar = () => {
                   {day.date.getDate()}
                 </div>
 
+<<<<<<< HEAD
                 {/* 이벤트들 */}
                 <div className="space-y-1">
                   {day.events.slice(0, 3).map((event, eventIndex) => {
@@ -360,6 +679,168 @@ const WorkStatusCalendar = () => {
                       +{day.events.length - 3}개 더
                     </div>
                   )}
+=======
+                {/* 이벤트들 - 2열 그리드 레이아웃으로 공간 최적화 */}
+                <div className="space-y-0.5">
+                  {(() => {
+                    const dayString = day.date.toDateString();
+                    const isExpanded = expandedDays.has(dayString);
+                    
+                    // 이벤트 우선순위별 정렬
+                    const sortedEvents = [...day.events].sort((a, b) => {
+                      const aPriority = getEventPriority(a);
+                      const bPriority = getEventPriority(b);
+                      return aPriority - bPriority;
+                    });
+                    
+                    // 표시할 이벤트 수 제한 (Level 1: 핵심만 표시)
+                    const maxDisplayEvents = isExpanded ? 12 : 6;
+                    const displayEvents = isExpanded ? sortedEvents : sortedEvents.slice(0, maxDisplayEvents);
+                    const hiddenCount = sortedEvents.length - maxDisplayEvents;
+                    
+                    return (
+                      <>
+                        {displayEvents.map((event, eventIndex) => {
+                          const { colorClass, borderClass, priorityText, isDetail, bgClass, projectColors, priority } = getEventStyle(event);
+                          const eventName = event.task_name || event.work_name;
+                          const owner = event.work_owner || event.assigned_to || '';
+                          const department = event.department || '';
+                          const startDate = event.start_date ? new Date(event.start_date).toLocaleDateString('ko-KR') : '';
+                          const endDate = event.end_date ? new Date(event.end_date).toLocaleDateString('ko-KR') : '';
+                          const description = event.description || event.work_description || '';
+                          const progress = event.progress_percentage || 0;
+                          
+                          // 개선된 업무명 표시 (확장 상태에 따라 다른 길이)
+                          const formattedName = formatWorkName(eventName, isDetail, isExpanded ? 'expanded' : 'normal');
+                          
+                          // 메인업무 정보 찾기 (세부업무인 경우)
+                          const parentWork = isDetail ? 
+                            (additionalWorks || []).find(work => work.id === event.additional_work_id) : null;
+                          
+                          const tooltipContent = (
+                            <div className="text-left space-y-1 max-w-sm">
+                              <div className="font-semibold text-yellow-300">
+                                {isDetail ? '📋 세부업무' : '📁 업무'}: {eventName}
+                              </div>
+                              
+                              {/* 세부업무인 경우 메인업무 정보 표시 */}
+                              {isDetail && parentWork && (
+                                <div className="text-blue-300 bg-blue-900 bg-opacity-30 px-2 py-1 rounded text-xs">
+                                  📁 메인업무: {parentWork.work_name}
+                                </div>
+                              )}
+                              
+                              {department && <div className="text-gray-300">부서: {department}</div>}
+                              {owner && <div className="text-gray-300">담당자: {owner}</div>}
+                              {startDate && endDate && (
+                                <div className="text-gray-300">
+                                  기간: {startDate} ~ {endDate}
+                                </div>
+                              )}
+                              {progress > 0 && (
+                                <div className="text-gray-300">진행률: {progress}%</div>
+                              )}
+                              {description && (
+                                <div className="text-gray-300 text-xs mt-2 border-t border-gray-600 pt-1">
+                                  {description.length > 100 ? description.substring(0, 100) + '...' : description}
+                                </div>
+                              )}
+                              {priorityText !== '일반' && (
+                                <div className="text-red-300 font-medium">⚠️ {priorityText}</div>
+                              )}
+                            </div>
+                          );
+                          
+                          return (
+                            <Tooltip key={`${event.id}-${eventIndex}`} content={tooltipContent} position="right">
+                              <div
+                                className={`w-full text-xs px-1.5 py-1 rounded cursor-pointer transition-all hover:scale-105 hover:shadow-md border ${borderClass} ${bgClass} ${colorClass}`}
+                                style={{
+                                  padding: isExpanded ? '6px' : '4px 6px',
+                                  fontSize: isExpanded ? '11px' : '10px',
+                                  lineHeight: isExpanded ? '1.3' : '1.2'
+                                }}
+                              >
+                                <div className="flex items-start justify-between">
+                                  <div className="flex items-start space-x-1 flex-1 min-w-0">
+                                    {/* 업무 유형 아이콘 */}
+                                    <span className="text-xs opacity-80 flex-shrink-0 mt-0.5">
+                                      {isDetail ? '●' : '■'}
+                                    </span>
+                                    
+                                    {/* 개선된 업무명 표시 */}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="break-words leading-tight font-medium">
+                                        {formattedName}
+                                      </div>
+                                      
+                                      {/* 확장 모드에서 담당자 표시 */}
+                                      {isExpanded && owner && (
+                                        <div className="text-xs opacity-70 truncate">
+                                          👤 {owner}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* 우선순위 표시 */}
+                                  <div className="flex-shrink-0">
+                                    {priority <= 2 && (
+                                      <span className="text-xs font-bold">🔥</span>
+                                    )}
+                                    {priority === 3 && (
+                                      <span className="text-xs">⚡</span>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                {/* 진행률 바 (메인 업무만) */}
+                                {!isDetail && progress > 0 && (
+                                  <div className="mt-1">
+                                    <div className="w-full bg-white bg-opacity-30 rounded-full h-1">
+                                      <div 
+                                        className="bg-white bg-opacity-80 h-1 rounded-full transition-all"
+                                        style={{ width: `${progress}%` }}
+                                      ></div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </Tooltip>
+                          );
+                        })}
+                        
+                        {/* 더보기/접기 버튼 - 간소화된 디자인 */}
+                        {!isExpanded && hiddenCount > 0 && (
+                          <button
+                            onClick={() => toggleDayExpansion(dayString)}
+                            className="w-full text-xs text-gray-600 px-1.5 py-1 bg-gray-50 hover:bg-gray-100 rounded text-center transition-all duration-200 border border-gray-200 mt-0.5"
+                            style={{ fontSize: '10px' }}
+                          >
+                            <div className="flex items-center justify-center space-x-1">
+                              <span>▼</span>
+                              <span className="font-medium">+{hiddenCount}</span>
+                            </div>
+                          </button>
+                        )}
+                        
+                        {/* 접기 버튼 */}
+                        {isExpanded && (
+                          <button
+                            onClick={() => toggleDayExpansion(dayString)}
+                            className="w-full text-xs text-gray-600 px-1.5 py-1 bg-indigo-50 hover:bg-indigo-100 rounded text-center transition-all duration-200 border border-indigo-200 mt-0.5"
+                            style={{ fontSize: '10px' }}
+                          >
+                            <div className="flex items-center justify-center space-x-1">
+                              <span>▲</span>
+                              <span className="font-medium">접기</span>
+                            </div>
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
+>>>>>>> 28f8e6c
                 </div>
               </div>
             ))}
@@ -369,46 +850,143 @@ const WorkStatusCalendar = () => {
 
       {/* 이번 주 주요 일정 */}
       <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">이번 주 주요 일정</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">📋 이번 주 주요 일정</h3>
         <div className="space-y-3">
-          {additionalWorks
-            .filter(work => {
+          {(() => {
+            // 업무와 세부업무를 합친 배열 생성
+            const allItems = [];
+            
+            // 업무 추가
+            (additionalWorks || []).forEach(work => {
+              allItems.push({ ...work, type: 'work' });
+              
+              // 세부업무는 각자의 실제 마감일을 사용
+              if (work.detail_tasks && Array.isArray(work.detail_tasks)) {
+                work.detail_tasks.forEach(task => {
+                  if (task.end_date) { // end_date가 있는 세부업무만 추가
+                    allItems.push({ 
+                      ...task, 
+                      type: 'detail', 
+                      // task.end_date 그대로 사용 (부모 업무 날짜로 덮어쓰지 않음)
+                      additional_work_id: work.id,
+                      parent_work_name: work.work_name
+                    });
+                  }
+                });
+              }
+            });
+            
+            return allItems;
+          })()
+            .filter(item => {
               const today = new Date();
               const weekEnd = new Date(today);
               weekEnd.setDate(today.getDate() + 7);
-              const endDate = new Date(work.end_date);
+              const endDate = new Date(item.end_date);
               return endDate >= today && endDate <= weekEnd;
             })
             .sort((a, b) => new Date(a.end_date) - new Date(b.end_date))
-            .slice(0, 5)
-            .map(work => {
-              const daysLeft = Math.ceil((new Date(work.end_date) - new Date()) / (1000 * 60 * 60 * 24));
-              return (
-                <div key={work.id} className="flex justify-between items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
-                  <div>
-                    <h4 className="font-medium text-gray-900">{work.work_name}</h4>
-                    <p className="text-sm text-gray-600">{work.department} | {work.work_owner}</p>
+            .slice(0, 8)
+            .map(item => {
+              const { colorClass, borderClass, priorityText, isDetail } = getEventStyle(item.task_name ? { ...item, type: 'detail' } : { ...item, type: 'work' });
+              const itemName = item.task_name || item.work_name;
+              const owner = item.work_owner || item.assigned_to || '';
+              const department = item.department || '';
+              const daysLeft = Math.ceil((new Date(item.end_date) - new Date()) / (1000 * 60 * 60 * 24));
+              const startDate = item.start_date ? new Date(item.start_date).toLocaleDateString('ko-KR') : '';
+              const endDate = item.end_date ? new Date(item.end_date).toLocaleDateString('ko-KR') : '';
+              const description = item.description || item.work_description || '';
+              const progress = item.progress_percentage || 0;
+              
+              // 메인업무 정보 찾기 (세부업무인 경우)
+              const weeklyParentWork = isDetail ? 
+                (additionalWorks || []).find(work => work.id === item.additional_work_id) : null;
+              
+              const weeklyTooltipContent = (
+                <div className="text-left space-y-1 max-w-sm">
+                  <div className="font-semibold text-yellow-300">
+                    {isDetail ? '📋 세부업무' : '📁 업무'}: {itemName}
                   </div>
-                  <div className="text-right">
-                    <div className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                      daysLeft < 0 ? 'bg-red-100 text-red-800' :
-                      daysLeft === 0 ? 'bg-orange-100 text-orange-800' :
-                      daysLeft <= 3 ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-blue-100 text-blue-800'
-                    }`}>
-                      {daysLeft < 0 ? '지연' : daysLeft === 0 ? '오늘 마감' : `${daysLeft}일 남음`}
+                  
+                  {/* 세부업무인 경우 메인업무 정보 표시 */}
+                  {isDetail && weeklyParentWork && (
+                    <div className="text-blue-300 bg-blue-900 bg-opacity-30 px-2 py-1 rounded text-xs">
+                      📁 메인업무: {weeklyParentWork.work_name}
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">{work.end_date}</p>
+                  )}
+                  
+                  {department && <div className="text-gray-300">부서: {department}</div>}
+                  {owner && <div className="text-gray-300">담당자: {owner}</div>}
+                  {startDate && endDate && (
+                    <div className="text-gray-300">
+                      기간: {startDate} ~ {endDate}
+                    </div>
+                  )}
+                  {progress > 0 && (
+                    <div className="text-gray-300">진행률: {progress}%</div>
+                  )}
+                  {description && (
+                    <div className="text-gray-300 text-xs mt-2 border-t border-gray-600 pt-1">
+                      {description.length > 150 ? description.substring(0, 150) + '...' : description}
+                    </div>
+                  )}
+                  <div className="text-blue-300 font-medium">
+                    ⏰ {daysLeft < 0 ? `${Math.abs(daysLeft)}일 지연` : daysLeft === 0 ? '오늘 마감' : `${daysLeft}일 남음`}
                   </div>
                 </div>
               );
+              
+              return (
+                <Tooltip key={`${item.id}-${isDetail ? 'detail' : 'work'}`} content={weeklyTooltipContent} position="left">
+                  <div 
+                    className={`flex justify-between items-center p-3 rounded-lg hover:shadow-md transition-all duration-200 cursor-pointer ${colorClass} ${borderClass}`}
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <span className="text-sm">{isDetail ? '📋' : '📁'}</span>
+                        <h4 className="font-medium">{itemName}</h4>
+                        {isDetail && (
+                          <span className="text-xs bg-black bg-opacity-20 px-2 py-0.5 rounded-full">
+                            세부업무
+                          </span>
+                        )}
+                      </div>
+                      {(department || owner) && (
+                        <p className="text-sm opacity-80">
+                          {department}{department && owner ? ' | ' : ''}{owner}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right ml-4">
+                      <div className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                        daysLeft < 0 ? 'bg-red-500 text-white' :
+                        daysLeft === 0 ? 'bg-orange-500 text-white' :
+                        daysLeft <= 3 ? 'bg-yellow-500 text-white' :
+                        'bg-green-500 text-white'
+                      }`}>
+                        {daysLeft < 0 ? '지연' : daysLeft === 0 ? '오늘 마감' : `${daysLeft}일 남음`}
+                      </div>
+                      <p className="text-xs opacity-70 mt-1">{item.end_date}</p>
+                    </div>
+                  </div>
+                </Tooltip>
+              );
             })}
           
-          {additionalWorks.filter(work => {
+          {(() => {
+            const allItems = [];
+            (additionalWorks || []).forEach(work => {
+              allItems.push(work);
+              if (work.detail_tasks && Array.isArray(work.detail_tasks)) {
+                work.detail_tasks.forEach(task => allItems.push(task));
+              }
+            });
+            return allItems;
+          })().filter(item => {
             const today = new Date();
             const weekEnd = new Date(today);
             weekEnd.setDate(today.getDate() + 7);
-            const endDate = new Date(work.end_date);
+            const endDate = new Date(item.end_date);
             return endDate >= today && endDate <= weekEnd;
           }).length === 0 && (
             <div className="text-center py-8 text-gray-500">

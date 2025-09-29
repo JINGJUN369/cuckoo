@@ -17,7 +17,11 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
   
   console.log(`📝 [v1.1] Stage2Form rendered - mode: ${mode}, project: ${project?.name}`);
   
-  const stage2Data = useMemo(() => project?.stage2 || {}, [project?.stage2]);
+  const stage2Data = useMemo(() => {
+    const data = project?.stage2 || {};
+    console.log(`📋 [v1.1] Stage2 data loaded:`, data);
+    return data;
+  }, [project?.stage2]);
   
   // 필드 정의 (v1.1 확장)
   const formFields = useMemo(() => [
@@ -118,6 +122,7 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
   // 필드 업데이트 핸들러
   const handleFieldChange = useCallback((field, value) => {
     console.log(`📝 [v1.1] Stage2Form field updated: ${field} = ${value}`);
+    console.log(`📝 [v1.1] onUpdate function exists: ${!!onUpdate}, mode: ${mode}`);
     
     // 터치 상태 업데이트
     setTouched(prev => ({ ...prev, [field]: true }));
@@ -137,9 +142,15 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
         ...stage2Data,
         [field]: value
       };
-      onUpdate(updatedStage2Data);
+      console.log(`📝 [v1.1] Calling onUpdate with stage2 data:`, updatedStage2Data);
+      try {
+        onUpdate(updatedStage2Data);
+        console.log(`✅ [v1.1] Stage2 onUpdate called successfully`);
+      } catch (error) {
+        console.error(`❌ [v1.1] Error calling Stage2 onUpdate:`, error);
+      }
     }
-  }, [formFields, validateField, onUpdate, mode, stage2Data]);
+  }, [formFields, validateField, onUpdate, mode]);
 
   // 체크박스 업데이트 핸들러
   const handleExecutedChange = useCallback((field, checked) => {

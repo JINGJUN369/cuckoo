@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useSupabaseProjectStore } from '../../hooks/useSupabaseProjectStore';
 import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
@@ -31,6 +31,9 @@ const ProjectEditPage_v1_2 = () => {
   const [lastSaved, setLastSaved] = useState(null);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  
+  // 디바운스 관련 ref
+  const saveTimeoutRef = useRef(null);
   
   // 기본 정보 편집 상태
   const [basicInfo, setBasicInfo] = useState({
@@ -99,9 +102,33 @@ const ProjectEditPage_v1_2 = () => {
     }
   }, [selectedProject, profile, updateProject]);
 
+  // 디바운스된 저장 함수 (1초 후 저장)
+  const debouncedSave = useCallback((updates, stageName = null) => {
+    // 기존 타이머 클리어
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    // 새 타이머 설정 (1초 후 저장)
+    saveTimeoutRef.current = setTimeout(() => {
+      handleSaveChanges(updates, stageName);
+    }, 1000);
+  }, [handleSaveChanges]);
+
+  // 컴포넌트 언마운트 시 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Stage별 저장 핸들러 - 완전한 stage 데이터 객체를 받음
   const handleStageUpdate = useCallback((stageNumber, stageData) => {
     console.log(`🔄 [v1.2] handleStageUpdate called - Stage ${stageNumber}`, stageData);
+    console.log(`🔄 [v1.2] selectedProject exists: ${!!selectedProject}, handleSaveChanges exists: ${!!handleSaveChanges}`);
+    
     const stageKey = `stage${stageNumber}`;
     const updates = { [stageKey]: stageData };
     
@@ -118,21 +145,28 @@ const ProjectEditPage_v1_2 = () => {
     }
     
     console.log(`🔄 [v1.2] Updates to send:`, updates);
-    handleSaveChanges(updates, `Stage ${stageNumber}`);
+    
+    try {
+      handleSaveChanges(updates, `Stage ${stageNumber}`);
+      console.log(`✅ [v1.2] handleSaveChanges called successfully for Stage ${stageNumber}`);
+    } catch (error) {
+      console.error(`❌ [v1.2] Error calling handleSaveChanges for Stage ${stageNumber}:`, error);
+    }
   }, [handleSaveChanges, selectedProject?.modelName]);
 
-  // 기본 정보 업데이트 핸들러
+  // 기본 정보 업데이트 핸들러 (디바운스 적용)
   const handleBasicInfoUpdate = useCallback((field, value) => {
+    // 즉시 상태 업데이트 (UI 반응성)
     setBasicInfo(prev => ({
       ...prev,
       [field]: value
     }));
     setHasUnsavedChanges(true);
     
-    // 자동 저장
+    // 디바운스된 저장 (1초 후)
     const updates = { [field]: value };
-    handleSaveChanges(updates, '기본 정보');
-  }, [handleSaveChanges]);
+    debouncedSave(updates, '기본 정보');
+  }, [debouncedSave]);
 
   // 완료 버튼 핸들러
   const handleComplete = useCallback(() => {
