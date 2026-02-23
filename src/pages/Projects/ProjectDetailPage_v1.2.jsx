@@ -196,7 +196,7 @@ const ProjectDetailPage_v1_2 = () => {
                 <span>•</span>
                 <span>의견: {opinionCount}개</span>
                 <span>•</span>
-                <span>모델명: {selectedProject.model_name || selectedProject.modelName || 'N/A'}</span>
+                <span>모델명: {selectedProject.model_name || selectedProject.modelName || selectedProject.stage1?.modelName || 'N/A'}</span>
               </div>
             </div>
             <div className="flex space-x-3">

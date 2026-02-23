@@ -60,7 +60,7 @@ const ProjectEditPage_v1_2 = () => {
     if (selectedProject) {
       setBasicInfo({
         name: selectedProject.name || '',
-        model_name: selectedProject.model_name || selectedProject.modelName || '',
+        model_name: selectedProject.model_name || selectedProject.modelName || selectedProject.stage1?.modelName || '',
         description: selectedProject.description || ''
       });
     }

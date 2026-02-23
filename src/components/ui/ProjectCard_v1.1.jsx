@@ -177,7 +177,7 @@ const ProjectCard_v11 = ({
               {project.name}
             </h3>
             <p className="text-sm text-gray-600 truncate">
-              {project.model_name || project.modelName || project.id}
+              {project.model_name || project.modelName || project.stage1?.modelName || '모델명 미입력'}
             </p>
           </div>
           <div className="flex items-center space-x-3 ml-4">
@@ -215,7 +215,7 @@ const ProjectCard_v11 = ({
             </h3>
             <div className="flex items-center space-x-2 text-sm text-gray-600">
               <span className="px-2 py-1 bg-gray-100 rounded-md font-medium">
-                {project.model_name || project.modelName || project.id}
+                {project.model_name || project.modelName || project.stage1?.modelName || '모델명 미입력'}
               </span>
               {project.stage1?.manufacturer && (
                 <span className="text-gray-500">
@@ -338,7 +338,7 @@ const ProjectCard_v11 = ({
               </h3>
               <div className="flex items-center space-x-3 text-sm text-gray-600">
                 <span className="px-2 py-1 bg-gray-100 rounded font-medium">
-                  {project.model_name || project.modelName || project.id}
+                  {project.model_name || project.modelName || project.stage1?.modelName || '모델명 미입력'}
                 </span>
                 {project.stage1?.manufacturer && (
                   <span>{project.stage1.manufacturer}</span>

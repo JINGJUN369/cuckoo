@@ -471,7 +471,7 @@ const CompletedProjectsPage_v1_2 = () => {
                       <div className="flex-1">
                         <h4 className="font-medium text-gray-900">{project.name}</h4>
                         <div className="flex items-center mt-1 space-x-4 text-sm text-gray-600">
-                          <span>모델: {project.model_name || 'N/A'}</span>
+                          <span>모델: {project.model_name || project.stage1?.modelName || 'N/A'}</span>
                           <span>진행률: {progress.overall}%</span>
                           <span>회사: {project.stage1?.manufacturer || 'N/A'}</span>
                         </div>
@@ -558,7 +558,7 @@ const CompletedProjectsPage_v1_2 = () => {
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
                           <div>
-                            <span className="font-medium">모델명:</span> {project.model_name || 'N/A'}
+                            <span className="font-medium">모델명:</span> {project.model_name || project.stage1?.modelName || 'N/A'}
                           </div>
                           <div>
                             <span className="font-medium">회사:</span> {project.stage1?.manufacturer || 'N/A'}
