@@ -49,14 +49,14 @@ const CompletedProjectsPage_v1_2 = () => {
   const completedStats = useMemo(() => {
     const total = completedProjects.length;
     const thisYear = completedProjects.filter(p => {
-      const completedDate = new Date(p.completedAt || p.createdAt);
+      const completedDate = new Date(p.completed_at || p.created_at);
       return completedDate.getFullYear() === new Date().getFullYear();
     }).length;
-    
+
     const thisMonth = completedProjects.filter(p => {
-      const completedDate = new Date(p.completedAt || p.createdAt);
+      const completedDate = new Date(p.completed_at || p.created_at);
       const now = new Date();
-      return completedDate.getFullYear() === now.getFullYear() && 
+      return completedDate.getFullYear() === now.getFullYear() &&
              completedDate.getMonth() === now.getMonth();
     }).length;
 
@@ -69,10 +69,10 @@ const CompletedProjectsPage_v1_2 = () => {
 
     // 평균 완료 기간 계산
     const completionTimes = completedProjects
-      .filter(p => p.createdAt && p.completedAt)
+      .filter(p => p.created_at && p.completed_at)
       .map(p => {
-        const start = new Date(p.createdAt);
-        const end = new Date(p.completedAt);
+        const start = new Date(p.created_at);
+        const end = new Date(p.completed_at);
         return Math.ceil((end - start) / (1000 * 60 * 60 * 24)); // 일 단위
       });
     
@@ -109,7 +109,7 @@ const CompletedProjectsPage_v1_2 = () => {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(project =>
         project.name?.toLowerCase().includes(searchLower) ||
-        project.modelName?.toLowerCase().includes(searchLower) ||
+        project.model_name?.toLowerCase().includes(searchLower) ||
         project.stage1?.manufacturer?.toLowerCase().includes(searchLower) ||
         project.stage1?.researcher1?.toLowerCase().includes(searchLower)
       );
@@ -119,8 +119,8 @@ const CompletedProjectsPage_v1_2 = () => {
     if (selectedPeriod !== 'all') {
       const now = new Date();
       filtered = filtered.filter(project => {
-        const completedDate = new Date(project.completedAt || project.createdAt);
-        
+        const completedDate = new Date(project.completed_at || project.created_at);
+
         switch (selectedPeriod) {
           case 'thisYear':
             return completedDate.getFullYear() === now.getFullYear();
@@ -150,19 +150,19 @@ const CompletedProjectsPage_v1_2 = () => {
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'completedDate':
-          return new Date(b.completedAt || b.createdAt) - new Date(a.completedAt || a.createdAt);
+          return new Date(b.completed_at || b.created_at) - new Date(a.completed_at || a.created_at);
         case 'name':
           return (a.name || '').localeCompare(b.name || '');
         case 'company':
           return (a.stage1?.manufacturer || '').localeCompare(b.stage1?.manufacturer || '');
         case 'duration':
           const getDuration = (project) => {
-            if (!project.createdAt || !project.completedAt) return 0;
-            return new Date(project.completedAt) - new Date(project.createdAt);
+            if (!project.created_at || !project.completed_at) return 0;
+            return new Date(project.completed_at) - new Date(project.created_at);
           };
           return getDuration(b) - getDuration(a);
         default:
-          return new Date(b.completedAt || b.createdAt) - new Date(a.completedAt || a.createdAt);
+          return new Date(b.completed_at || b.created_at) - new Date(a.completed_at || a.created_at);
       }
     });
 
@@ -185,11 +185,9 @@ const CompletedProjectsPage_v1_2 = () => {
     try {
       const completedProject = {
         ...project,
-        completedAt: new Date().toISOString(),
-        completedBy: profile.id,
-        completedByName: profile.name || profile.id,
-        status: 'completed',
-        archivedAt: new Date().toISOString()
+        completed_at: new Date().toISOString(),
+        completed_by: profile.id,
+        status: 'completed'
       };
 
       await moveToCompleted(project.id, completedProject);
@@ -232,17 +230,17 @@ const CompletedProjectsPage_v1_2 = () => {
   const handleExcelExport = useCallback(() => {
     const data = filteredCompletedProjects.map(project => ({
       '프로젝트명': project.name || '',
-      '모델명': project.modelName || '',
+      '모델명': project.model_name || '',
       '제조사': project.stage1?.manufacturer || '',
       '연구원1': project.stage1?.researcher1 || '',
       '연구원2': project.stage1?.researcher2 || '',
       '출시예정일': project.stage1?.launchDate || '',
       '양산예정일': project.stage1?.massProductionDate || '',
-      '완료일': project.completedAt ? new Date(project.completedAt).toLocaleDateString() : '',
-      '완료자': project.completedByName || '',
-      '생성일': project.createdAt ? new Date(project.createdAt).toLocaleDateString() : '',
-      '프로젝트기간(일)': project.createdAt && project.completedAt ? 
-        Math.ceil((new Date(project.completedAt) - new Date(project.createdAt)) / (1000 * 60 * 60 * 24)) : 0
+      '완료일': project.completed_at ? new Date(project.completed_at).toLocaleDateString() : '',
+      '완료자': project.completed_by || '',
+      '생성일': project.created_at ? new Date(project.created_at).toLocaleDateString() : '',
+      '프로젝트기간(일)': project.created_at && project.completed_at ?
+        Math.ceil((new Date(project.completed_at) - new Date(project.created_at)) / (1000 * 60 * 60 * 24)) : 0
     }));
 
     // CSV 생성
@@ -473,7 +471,7 @@ const CompletedProjectsPage_v1_2 = () => {
                       <div className="flex-1">
                         <h4 className="font-medium text-gray-900">{project.name}</h4>
                         <div className="flex items-center mt-1 space-x-4 text-sm text-gray-600">
-                          <span>모델: {project.modelName || 'N/A'}</span>
+                          <span>모델: {project.model_name || 'N/A'}</span>
                           <span>진행률: {progress.overall}%</span>
                           <span>회사: {project.stage1?.manufacturer || 'N/A'}</span>
                         </div>
@@ -541,8 +539,8 @@ const CompletedProjectsPage_v1_2 = () => {
             ) : (
               filteredCompletedProjects.map((project) => {
                 const progress = getProjectProgress(project);
-                const completedDate = new Date(project.completedAt || project.createdAt);
-                const createdDate = new Date(project.createdAt);
+                const completedDate = new Date(project.completed_at || project.created_at);
+                const createdDate = new Date(project.created_at);
                 const durationDays = Math.ceil((completedDate - createdDate) / (1000 * 60 * 60 * 24));
 
                 return (
@@ -560,7 +558,7 @@ const CompletedProjectsPage_v1_2 = () => {
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
                           <div>
-                            <span className="font-medium">모델명:</span> {project.modelName || 'N/A'}
+                            <span className="font-medium">모델명:</span> {project.model_name || 'N/A'}
                           </div>
                           <div>
                             <span className="font-medium">회사:</span> {project.stage1?.manufacturer || 'N/A'}
@@ -574,7 +572,7 @@ const CompletedProjectsPage_v1_2 = () => {
                         </div>
 
                         <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <span>완료자: {project.completedByName || 'N/A'}</span>
+                          <span>완료자: {project.completed_by || 'N/A'}</span>
                           <span>•</span>
                           <span>진행률: {progress.overall}%</span>
                           <span>•</span>

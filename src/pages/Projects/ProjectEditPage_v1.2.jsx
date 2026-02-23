@@ -38,7 +38,7 @@ const ProjectEditPage_v1_2 = () => {
   // 기본 정보 편집 상태
   const [basicInfo, setBasicInfo] = useState({
     name: '',
-    modelName: '',
+    model_name: '',
     description: ''
   });
 
@@ -60,7 +60,7 @@ const ProjectEditPage_v1_2 = () => {
     if (selectedProject) {
       setBasicInfo({
         name: selectedProject.name || '',
-        modelName: selectedProject.modelName || '',
+        model_name: selectedProject.model_name || selectedProject.modelName || '',
         description: selectedProject.description || ''
       });
     }
@@ -132,15 +132,15 @@ const ProjectEditPage_v1_2 = () => {
     const stageKey = `stage${stageNumber}`;
     const updates = { [stageKey]: stageData };
     
-    // Stage 1에서 modelName이 변경되었을 때 프로젝트 최상위 modelName도 업데이트
-    if (stageNumber === 1 && stageData.modelName !== selectedProject?.modelName) {
-      updates.modelName = stageData.modelName;
+    // Stage 1에서 modelName이 변경되었을 때 프로젝트 최상위 model_name도 업데이트
+    if (stageNumber === 1 && stageData.modelName !== (selectedProject?.model_name || selectedProject?.modelName)) {
+      updates.model_name = stageData.modelName;
       console.log(`🏷️ [v1.2] Model name updated: ${stageData.modelName}`);
-      
+
       // 기본정보 상태도 업데이트
       setBasicInfo(prev => ({
         ...prev,
-        modelName: stageData.modelName
+        model_name: stageData.modelName
       }));
     }
     
@@ -152,7 +152,7 @@ const ProjectEditPage_v1_2 = () => {
     } catch (error) {
       console.error(`❌ [v1.2] Error calling handleSaveChanges for Stage ${stageNumber}:`, error);
     }
-  }, [handleSaveChanges, selectedProject?.modelName]);
+  }, [handleSaveChanges, selectedProject?.model_name, selectedProject?.modelName]);
 
   // 기본 정보 업데이트 핸들러 (디바운스 적용)
   const handleBasicInfoUpdate = useCallback((field, value) => {
@@ -390,8 +390,8 @@ const ProjectEditPage_v1_2 = () => {
               <div>
                 <Input
                   label="모델명"
-                  value={basicInfo.modelName}
-                  onChange={(e) => handleBasicInfoUpdate('modelName', e.target.value)}
+                  value={basicInfo.model_name}
+                  onChange={(e) => handleBasicInfoUpdate('model_name', e.target.value)}
                   placeholder="제품 모델명을 입력하세요"
                   required
                   className="focus:ring-blue-500"

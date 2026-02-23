@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Input } from '../../../components/ui';
 import { getStageProgress } from '../../../types/project';
 
@@ -14,14 +14,21 @@ import { getStageProgress } from '../../../types/project';
 const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
   const [validationErrors, setValidationErrors] = useState({});
   const [touched, setTouched] = useState({});
-  
+  const [localFormData, setLocalFormData] = useState({});
+  const saveTimeoutRef = useRef(null);
+
   console.log(`📝 [v1.1] Stage2Form rendered - mode: ${mode}, project: ${project?.name}`);
-  
+
   const stage2Data = useMemo(() => {
     const data = project?.stage2 || {};
     console.log(`📋 [v1.1] Stage2 data loaded:`, data);
     return data;
   }, [project?.stage2]);
+
+  // 로컬 폼 데이터 초기화
+  useEffect(() => {
+    setLocalFormData(stage2Data);
+  }, [stage2Data]);
   
   // 필드 정의 (v1.1 확장)
   const formFields = useMemo(() => [
@@ -66,19 +73,19 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
       gridCols: 1
     },
     {
-      key: 'userManualUpload',
-      label: '6. 사용자 설명서 업로드',
-      type: 'file',
-      required: false,
-      hasExecuted: 'userManualUploaded',
+      key: 'userManualDate',
+      label: '6. 사용자 설명서 작성일',
+      type: 'date',
+      required: true,
+      hasExecuted: 'userManualDateExecuted',
       gridCols: 1
     },
     {
-      key: 'techManualUpload',
-      label: '7. 기술교본 업로드',
-      type: 'file',
-      required: false,
-      hasExecuted: 'techManualUploaded',
+      key: 'techManualDate',
+      label: '7. 기술교본 작성일',
+      type: 'date',
+      required: true,
+      hasExecuted: 'techManualDateExecuted',
       gridCols: 1
     }
   ], []);
@@ -89,8 +96,8 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
       return '필수 입력 항목입니다.';
     }
     
-    if (key.includes('Date') || key.includes('pilotProductionDate') || key.includes('techTransferDate') || 
-        key.includes('trainingDate')) {
+    if (key.includes('Date') || key.includes('pilotProductionDate') || key.includes('techTransferDate') ||
+        key.includes('trainingDate') || key.includes('userManualDate') || key.includes('techManualDate')) {
       if (value) {
         const date = new Date(value);
         if (isNaN(date.getTime())) {
@@ -120,56 +127,124 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
   }, [project?.stage1, stage2Data.pilotProductionDate]);
 
   // 필드 업데이트 핸들러
+  // Debounced save function
+  const debouncedSave = useCallback((updatedData) => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      if (onUpdate && mode === 'edit') {
+        console.log(`💾 [v1.1] Stage2 Debounced save triggered`);
+        try {
+          onUpdate(updatedData);
+          console.log(`✅ [v1.1] Stage2 onUpdate called successfully`);
+        } catch (error) {
+          console.error(`❌ [v1.1] Error calling Stage2 onUpdate:`, error);
+        }
+      }
+    }, 500); // 500ms 지연
+  }, [onUpdate, mode]);
+
   const handleFieldChange = useCallback((field, value) => {
     console.log(`📝 [v1.1] Stage2Form field updated: ${field} = ${value}`);
-    console.log(`📝 [v1.1] onUpdate function exists: ${!!onUpdate}, mode: ${mode}`);
-    
+
     // 터치 상태 업데이트
     setTouched(prev => ({ ...prev, [field]: true }));
-    
+
     // 유효성 검사
     const fieldDef = formFields.find(f => f.key === field);
     const error = validateField(field, value, fieldDef?.required);
-    
+
     setValidationErrors(prev => ({
       ...prev,
       [field]: error
     }));
-    
-    // 상위로 변경사항 전달 - 전체 stage2 데이터 업데이트
-    if (onUpdate && mode === 'edit') {
-      const updatedStage2Data = {
-        ...stage2Data,
-        [field]: value
-      };
-      console.log(`📝 [v1.1] Calling onUpdate with stage2 data:`, updatedStage2Data);
-      try {
-        onUpdate(updatedStage2Data);
-        console.log(`✅ [v1.1] Stage2 onUpdate called successfully`);
-      } catch (error) {
-        console.error(`❌ [v1.1] Error calling Stage2 onUpdate:`, error);
-      }
-    }
-  }, [formFields, validateField, onUpdate, mode]);
+
+    // 로컬 상태 즉시 업데이트
+    const updatedData = {
+      ...localFormData,
+      [field]: value
+    };
+    setLocalFormData(updatedData);
+
+    // 디바운스된 저장
+    debouncedSave({
+      ...stage2Data,
+      [field]: value
+    });
+  }, [formFields, validateField, localFormData, stage2Data, debouncedSave]);
 
   // 체크박스 업데이트 핸들러
   const handleExecutedChange = useCallback((field, checked) => {
     console.log(`✅ [v1.1] Stage2Form executed updated: ${field} = ${checked}`);
-    
-    if (onUpdate && mode === 'edit') {
-      const updatedStage2Data = {
-        ...stage2Data,
-        [field]: checked
-      };
-      onUpdate(updatedStage2Data);
-    }
-  }, [onUpdate, mode, stage2Data]);
+
+    // 로컬 상태 즉시 업데이트
+    const updatedData = {
+      ...localFormData,
+      [field]: checked
+    };
+    setLocalFormData(updatedData);
+
+    // 디바운스된 저장
+    debouncedSave({
+      ...stage2Data,
+      [field]: checked
+    });
+  }, [localFormData, stage2Data, debouncedSave]);
 
   // 진행률 계산 (표준화된 함수 사용)
   const progressPercentage = useMemo(() => {
     if (!project) return 0;
     return getStageProgress(project, 'stage2');
   }, [project]);
+
+  // 미완성 필드 계산
+  const incompleteFields = useMemo(() => {
+    const currentData = mode === 'edit' ? localFormData : stage2Data;
+    const incomplete = [];
+
+    console.log('🔍 [Stage2] Debug - currentData:', currentData);
+    console.log('🔍 [Stage2] Debug - formFields:', formFields);
+
+    formFields.forEach(field => {
+      // 필수 필드 체크
+      if (field.required) {
+        const value = currentData[field.key];
+        if (!value || value.trim() === '') {
+          console.log(`❌ [Stage2] Missing required field: ${field.key}`, field.label);
+          incomplete.push({
+            key: field.key,
+            label: field.label,
+            type: 'required'
+          });
+        }
+      }
+
+      // 실행완료 체크박스 체크 (date 및 file 필드에 대해)
+      if (field.hasExecuted) {
+        const executedValue = currentData[field.hasExecuted];
+        if (!executedValue) {
+          console.log(`⚠️ [Stage2] Missing execution for: ${field.hasExecuted}`, field.label);
+          incomplete.push({
+            key: field.hasExecuted,
+            label: `${field.label} - 실행완료`,
+            type: 'execution'
+          });
+        }
+      }
+    });
+
+    console.log('📊 [Stage2] Final incomplete fields:', incomplete);
+    return incomplete;
+  }, [formFields, localFormData, stage2Data, mode]);
+
+  // 필드가 미완성인지 확인하는 헬퍼 함수
+  const isFieldIncomplete = useCallback((fieldKey, hasExecutedKey = null) => {
+    return incompleteFields.some(item =>
+      item.key === fieldKey || item.key === hasExecutedKey
+    );
+  }, [incompleteFields]);
 
   // 읽기 전용 모드 렌더링
   if (mode === 'view') {
@@ -179,11 +254,34 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
           <div className="flex items-center">
             <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
             <h3 className="text-xl font-semibold text-green-600">2차 단계 - 생산 준비</h3>
+            {incompleteFields.length > 0 && (
+              <span className="ml-3 px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+                미완성 {incompleteFields.length}개
+              </span>
+            )}
           </div>
           <div className="text-sm text-gray-600">
             진행률: {progressPercentage}%
           </div>
         </div>
+
+        {/* 미완성 필드 경고 영역 */}
+        {incompleteFields.length > 0 && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center mb-2">
+              <div className="w-4 h-4 bg-amber-500 rounded-full mr-2"></div>
+              <h4 className="text-sm font-medium text-amber-800">완료되지 않은 항목들</h4>
+            </div>
+            <ul className="text-sm text-amber-700 space-y-1">
+              {incompleteFields.map((item, index) => (
+                <li key={index} className="flex items-center">
+                  <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-2"></span>
+                  {item.label}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {formFields.map(field => (
@@ -191,6 +289,11 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {field.label}
                 {field.required && <span className="text-red-500 ml-1">*</span>}
+                {isFieldIncomplete(field.key, field.hasExecuted) && (
+                  <span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded">
+                    미완성
+                  </span>
+                )}
               </label>
               
               {field.type === 'date' ? (
@@ -239,6 +342,11 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
         <div className="flex items-center">
           <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
           <h3 className="text-xl font-semibold text-green-600">2차 단계 - 생산 준비</h3>
+          {incompleteFields.length > 0 && (
+            <span className="ml-3 px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+              미완성 {incompleteFields.length}개
+            </span>
+          )}
         </div>
         <div className="flex items-center space-x-4">
           <div className="text-sm text-gray-600">
@@ -246,13 +354,31 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
           </div>
           {/* 진행률 바 */}
           <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div 
+            <div
               className="h-full bg-green-500 transition-all duration-300"
               style={{ width: `${progressPercentage}%` }}
             ></div>
           </div>
         </div>
       </div>
+
+      {/* 미완성 필드 경고 영역 (편집 모드) */}
+      {incompleteFields.length > 0 && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-center mb-2">
+            <div className="w-4 h-4 bg-amber-500 rounded-full mr-2"></div>
+            <h4 className="text-sm font-medium text-amber-800">완료되지 않은 항목들</h4>
+          </div>
+          <ul className="text-sm text-amber-700 space-y-1">
+            {incompleteFields.map((item, index) => (
+              <li key={index} className="flex items-center">
+                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-2"></span>
+                {item.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {formFields.map(field => (
@@ -262,11 +388,16 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   {field.label}
                   {field.required && <span className="text-red-500 ml-1">*</span>}
+                  {isFieldIncomplete(field.key, field.hasExecuted) && (
+                    <span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded">
+                      미완성
+                    </span>
+                  )}
                 </label>
                 <div className="flex items-center space-x-3">
                   <Input
                     type="date"
-                    value={stage2Data[field.key] || ''}
+                    value={localFormData[field.key] || ''}
                     onChange={(e) => handleFieldChange(field.key, e.target.value)}
                     className={`flex-1 ${
                       validationErrors[field.key] && touched[field.key] 
@@ -278,7 +409,7 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
                     <label className="flex items-center whitespace-nowrap cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={stage2Data[field.hasExecuted] || false}
+                        checked={localFormData[field.hasExecuted] || false}
                         onChange={(e) => handleExecutedChange(field.hasExecuted, e.target.checked)}
                         className="mr-2 w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
                       />
@@ -295,6 +426,11 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   {field.label}
                   {field.required && <span className="text-red-500 ml-1">*</span>}
+                  {isFieldIncomplete(field.key, field.hasExecuted) && (
+                    <span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded">
+                      미완성
+                    </span>
+                  )}
                 </label>
                 <div className="flex items-center space-x-3">
                   <Input
@@ -316,7 +452,7 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
                     <label className="flex items-center whitespace-nowrap cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={stage2Data[field.hasExecuted] || false}
+                        checked={localFormData[field.hasExecuted] || false}
                         onChange={(e) => handleExecutedChange(field.hasExecuted, e.target.checked)}
                         className="mr-2 w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
                       />
@@ -333,15 +469,24 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
               </div>
             ) : (
               <div>
+                <div className="flex items-center mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    {field.label}
+                    {field.required && <span className="text-red-500 ml-1">*</span>}
+                  </label>
+                  {isFieldIncomplete(field.key) && (
+                    <span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded">
+                      미완성
+                    </span>
+                  )}
+                </div>
                 <Input
-                  label={field.label}
-                  required={field.required}
-                  value={stage2Data[field.key] || ''}
+                  value={localFormData[field.key] || ''}
                   onChange={(e) => handleFieldChange(field.key, e.target.value)}
                   placeholder={field.placeholder}
                   className={
-                    validationErrors[field.key] && touched[field.key] 
-                      ? 'border-red-500 focus:ring-red-500' 
+                    validationErrors[field.key] && touched[field.key]
+                      ? 'border-red-500 focus:ring-red-500'
                       : 'focus:ring-green-500'
                   }
                 />
@@ -359,7 +504,7 @@ const Stage2Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
         <label className="block text-sm font-medium text-gray-700 mb-2">비고 (공용 메모)</label>
         <div className="border border-gray-300 rounded-lg p-3 bg-gray-50">
           <textarea
-            value={stage2Data.notes || ''}
+            value={localFormData.notes || ''}
             onChange={(e) => handleFieldChange('notes', e.target.value)}
             rows={6}
             placeholder="2단계 생산준비 관련 메모를 작성하세요. 예: 생산라인 세부 계획, 인증 진행 상황, 교육 내용 등..."

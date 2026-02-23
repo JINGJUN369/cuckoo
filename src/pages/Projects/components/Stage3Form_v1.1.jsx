@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Input } from '../../../components/ui';
 import { getStageProgress } from '../../../types/project';
 
@@ -14,14 +14,21 @@ import { getStageProgress } from '../../../types/project';
 const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
   const [validationErrors, setValidationErrors] = useState({});
   const [touched, setTouched] = useState({});
-  
+  const [localFormData, setLocalFormData] = useState({});
+  const saveTimeoutRef = useRef(null);
+
   console.log(`📝 [v1.1] Stage3Form rendered - mode: ${mode}, project: ${project?.name}`);
-  
+
   const stage3Data = useMemo(() => {
     const data = project?.stage3 || {};
     console.log(`📋 [v1.1] Stage3 data loaded:`, data);
     return data;
   }, [project?.stage3]);
+
+  // 로컬 폼 데이터 초기화
+  useEffect(() => {
+    setLocalFormData(stage3Data);
+  }, [stage3Data]);
   
   // 필드 정의 (v1.1 확장)
   const formFields = useMemo(() => [
@@ -140,56 +147,117 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
   }, [project?.stage1, stage3Data.bomCompletionDate, stage3Data.priceRegistrationDate, stage3Data.firstPartsOrderDate]);
 
   // 필드 업데이트 핸들러
+  // Debounced save function
+  const debouncedSave = useCallback((updatedData) => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      if (onUpdate && mode === 'edit') {
+        console.log(`💾 [v1.1] Stage3 Debounced save triggered`);
+        try {
+          onUpdate(updatedData);
+          console.log(`✅ [v1.1] Stage3 onUpdate called successfully`);
+        } catch (error) {
+          console.error(`❌ [v1.1] Error calling Stage3 onUpdate:`, error);
+        }
+      }
+    }, 500); // 500ms 지연
+  }, [onUpdate, mode]);
+
   const handleFieldChange = useCallback((field, value) => {
     console.log(`📝 [v1.1] Stage3Form field updated: ${field} = ${value}`);
-    console.log(`📝 [v1.1] onUpdate function exists: ${!!onUpdate}, mode: ${mode}`);
-    
+
     // 터치 상태 업데이트
     setTouched(prev => ({ ...prev, [field]: true }));
-    
+
     // 유효성 검사
     const fieldDef = formFields.find(f => f.key === field);
     const error = validateField(field, value, fieldDef?.required);
-    
+
     setValidationErrors(prev => ({
       ...prev,
       [field]: error
     }));
-    
-    // 상위로 변경사항 전달 - 전체 stage3 데이터 업데이트
-    if (onUpdate && mode === 'edit') {
-      const updatedStage3Data = {
-        ...stage3Data,
-        [field]: value
-      };
-      console.log(`📝 [v1.1] Calling onUpdate with stage3 data:`, updatedStage3Data);
-      try {
-        onUpdate(updatedStage3Data);
-        console.log(`✅ [v1.1] Stage3 onUpdate called successfully`);
-      } catch (error) {
-        console.error(`❌ [v1.1] Error calling Stage3 onUpdate:`, error);
-      }
-    }
-  }, [formFields, validateField, onUpdate, mode]);
+
+    // 로컬 상태 즉시 업데이트
+    const updatedData = {
+      ...localFormData,
+      [field]: value
+    };
+    setLocalFormData(updatedData);
+
+    // 디바운스된 저장
+    debouncedSave({
+      ...stage3Data,
+      [field]: value
+    });
+  }, [formFields, validateField, localFormData, stage3Data, debouncedSave]);
 
   // 체크박스 업데이트 핸들러
   const handleExecutedChange = useCallback((field, checked) => {
     console.log(`✅ [v1.1] Stage3Form executed updated: ${field} = ${checked}`);
-    
-    if (onUpdate && mode === 'edit') {
-      const updatedStage3Data = {
-        ...stage3Data,
-        [field]: checked
-      };
-      onUpdate(updatedStage3Data);
-    }
-  }, [onUpdate, mode, stage3Data]);
+
+    // 로컬 상태 즉시 업데이트
+    const updatedData = {
+      ...localFormData,
+      [field]: checked
+    };
+    setLocalFormData(updatedData);
+
+    // 디바운스된 저장
+    debouncedSave({
+      ...stage3Data,
+      [field]: checked
+    });
+  }, [localFormData, stage3Data, debouncedSave]);
 
   // 진행률 계산 (표준화된 함수 사용)
   const progressPercentage = useMemo(() => {
     if (!project) return 0;
     return getStageProgress(project, 'stage3');
   }, [project]);
+
+  // 미완성 필드 계산
+  const incompleteFields = useMemo(() => {
+    const incomplete = [];
+
+    formFields.forEach(field => {
+      // 필수 필드 체크
+      if (field.required) {
+        const value = localFormData[field.key] || stage3Data[field.key];
+        if (!value || value.trim() === '') {
+          incomplete.push({
+            key: field.key,
+            label: field.label,
+            type: 'required'
+          });
+        }
+      }
+
+      // 실행완료 체크박스 체크 (date 필드에 대해)
+      if (field.hasExecuted) {
+        const executedValue = localFormData[field.hasExecuted] || stage3Data[field.hasExecuted];
+        if (!executedValue) {
+          incomplete.push({
+            key: field.hasExecuted,
+            label: `${field.label} - 실행완료`,
+            type: 'execution'
+          });
+        }
+      }
+    });
+
+    return incomplete;
+  }, [formFields, localFormData, stage3Data]);
+
+  // 필드가 미완성인지 확인하는 헬퍼 함수
+  const isFieldIncomplete = useCallback((fieldKey, hasExecutedKey = null) => {
+    return incompleteFields.some(item =>
+      item.key === fieldKey || item.key === hasExecutedKey
+    );
+  }, [incompleteFields]);
 
   // 읽기 전용 모드 렌더링
   if (mode === 'view') {
@@ -199,11 +267,34 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
           <div className="flex items-center">
             <div className="w-3 h-3 bg-purple-500 rounded-full mr-3"></div>
             <h3 className="text-xl font-semibold text-purple-600">3단계 - 서비스 준비</h3>
+            {incompleteFields.length > 0 && (
+              <span className="ml-3 px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+                미완성 {incompleteFields.length}개
+              </span>
+            )}
           </div>
           <div className="text-sm text-gray-600">
             진행률: {progressPercentage}%
           </div>
         </div>
+
+        {/* 미완성 필드 경고 영역 */}
+        {incompleteFields.length > 0 && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center mb-2">
+              <div className="w-4 h-4 bg-amber-500 rounded-full mr-2"></div>
+              <h4 className="text-sm font-medium text-amber-800">완료되지 않은 항목들</h4>
+            </div>
+            <ul className="text-sm text-amber-700 space-y-1">
+              {incompleteFields.map((item, index) => (
+                <li key={index} className="flex items-center">
+                  <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-2"></span>
+                  {item.label}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {formFields.map(field => (
@@ -211,6 +302,11 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {field.label}
                 {field.required && <span className="text-red-500 ml-1">*</span>}
+                {isFieldIncomplete(field.key, field.hasExecuted) && (
+                  <span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded">
+                    미완성
+                  </span>
+                )}
               </label>
               
               {field.type === 'date' ? (
@@ -259,6 +355,11 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
         <div className="flex items-center">
           <div className="w-3 h-3 bg-purple-500 rounded-full mr-3"></div>
           <h3 className="text-xl font-semibold text-purple-600">3단계 - 서비스 준비</h3>
+          {incompleteFields.length > 0 && (
+            <span className="ml-3 px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+              미완성 {incompleteFields.length}개
+            </span>
+          )}
         </div>
         <div className="flex items-center space-x-4">
           <div className="text-sm text-gray-600">
@@ -266,13 +367,31 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
           </div>
           {/* 진행률 바 */}
           <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div 
+            <div
               className="h-full bg-purple-500 transition-all duration-300"
               style={{ width: `${progressPercentage}%` }}
             ></div>
           </div>
         </div>
       </div>
+
+      {/* 미완성 필드 경고 영역 (편집 모드) */}
+      {incompleteFields.length > 0 && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-center mb-2">
+            <div className="w-4 h-4 bg-amber-500 rounded-full mr-2"></div>
+            <h4 className="text-sm font-medium text-amber-800">완료되지 않은 항목들</h4>
+          </div>
+          <ul className="text-sm text-amber-700 space-y-1">
+            {incompleteFields.map((item, index) => (
+              <li key={index} className="flex items-center">
+                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-2"></span>
+                {item.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {formFields.map(field => (
@@ -282,11 +401,16 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   {field.label}
                   {field.required && <span className="text-red-500 ml-1">*</span>}
+                  {isFieldIncomplete(field.key, field.hasExecuted) && (
+                    <span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded">
+                      미완성
+                    </span>
+                  )}
                 </label>
                 <div className="flex items-center space-x-3">
                   <Input
                     type="date"
-                    value={stage3Data[field.key] || ''}
+                    value={localFormData[field.key] || ''}
                     onChange={(e) => handleFieldChange(field.key, e.target.value)}
                     className={`flex-1 ${
                       validationErrors[field.key] && touched[field.key] 
@@ -298,7 +422,7 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
                     <label className="flex items-center whitespace-nowrap cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={stage3Data[field.hasExecuted] || false}
+                        checked={localFormData[field.hasExecuted] || false}
                         onChange={(e) => handleExecutedChange(field.hasExecuted, e.target.checked)}
                         className="mr-2 w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                       />
@@ -312,15 +436,24 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
               </div>
             ) : (
               <div>
+                <div className="flex items-center mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    {field.label}
+                    {field.required && <span className="text-red-500 ml-1">*</span>}
+                  </label>
+                  {isFieldIncomplete(field.key) && (
+                    <span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded">
+                      미완성
+                    </span>
+                  )}
+                </div>
                 <Input
-                  label={field.label}
-                  required={field.required}
-                  value={stage3Data[field.key] || ''}
+                  value={localFormData[field.key] || ''}
                   onChange={(e) => handleFieldChange(field.key, e.target.value)}
                   placeholder={field.placeholder}
                   className={
-                    validationErrors[field.key] && touched[field.key] 
-                      ? 'border-red-500 focus:ring-red-500' 
+                    validationErrors[field.key] && touched[field.key]
+                      ? 'border-red-500 focus:ring-red-500'
                       : 'focus:ring-purple-500'
                   }
                 />
@@ -338,7 +471,7 @@ const Stage3Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
         <label className="block text-sm font-medium text-gray-700 mb-2">비고 (공용 메모)</label>
         <div className="border border-gray-300 rounded-lg p-3 bg-gray-50">
           <textarea
-            value={stage3Data.notes || ''}
+            value={localFormData.notes || ''}
             onChange={(e) => handleFieldChange('notes', e.target.value)}
             rows={6}
             placeholder="3단계 서비스준비 관련 메모를 작성하세요. 예: BOM 구성 세부사항, 부품 발주 계획, A/S 체계 구축 계획 등..."

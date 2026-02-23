@@ -80,7 +80,7 @@ const ProjectListPage_v1_2 = () => {
           return aDDays - bDDays;
         case 'updated':
         default:
-          return new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt);
+          return new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at);
       }
     });
 
@@ -240,8 +240,8 @@ const ProjectListPage_v1_2 = () => {
         '양산준비완료일': project.stage3?.massProductionReadyDate || '',
         '양산준비완료': project.stage3?.massProductionReadyExecuted ? 'Y' : 'N',
         
-        '생성일': new Date(project.createdAt).toLocaleDateString(),
-        '수정일': new Date(project.updatedAt || project.createdAt).toLocaleDateString()
+        '생성일': new Date(project.created_at).toLocaleDateString(),
+        '수정일': new Date(project.updated_at || project.created_at).toLocaleDateString()
       };
     });
 

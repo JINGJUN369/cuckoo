@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import useWorkStatusStore from '../../hooks/useWorkStatusStore';
 import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
-<<<<<<< HEAD
-=======
 import WorkFilterBar from '../../components/workstatus/WorkFilterBar';
 import Tooltip from '../../components/ui/Tooltip';
 import { getWorkColor, getPriorityText, isDetailTask, clearColorCache } from '../../utils/colorUtils';
->>>>>>> 28f8e6c
 
 /**
  * WorkStatusCalendar - 업무달력 페이지
@@ -21,24 +18,13 @@ const WorkStatusCalendar = () => {
   const { user, profile } = useSupabaseAuth();
   const {
     additionalWorks,
-<<<<<<< HEAD
-    users,
-=======
     allAdditionalWorks,
->>>>>>> 28f8e6c
     loading,
     error,
-    ui,
     fetchAdditionalWorks,
-<<<<<<< HEAD
-    fetchUsers,
-    setSelectedUserId,
-    setupRealtimeSubscriptions
-=======
     setupRealtimeSubscriptions,
     setFilter,
     getAllAuthors
->>>>>>> 28f8e6c
   } = useWorkStatusStore();
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -47,30 +33,11 @@ const WorkStatusCalendar = () => {
 
   // 데이터 로드 및 실시간 구독
   useEffect(() => {
-    fetchUsers();
     fetchAdditionalWorks();
     const unsubscribe = setupRealtimeSubscriptions();
     return unsubscribe;
   }, []);
 
-<<<<<<< HEAD
-  // 사용자 필터 변경 핸들러
-  const handleUserFilterChange = (e) => {
-    setSelectedUserId(e.target.value);
-  };
-
-  // 현재 선택된 사용자 이름 가져오기
-  const getSelectedUserName = () => {
-    const { selectedUserId } = ui;
-    if (selectedUserId === 'current_user') {
-      return profile?.name || user?.email || '현재 사용자';
-    } else if (selectedUserId === 'all_users') {
-      return '전체 사용자';
-    } else {
-      const selectedUser = users.find(u => u.id === selectedUserId);
-      return selectedUser ? selectedUser.name : '선택된 사용자';
-    }
-=======
   // 필터 변경시 색상 캐시 초기화
   useEffect(() => {
     clearColorCache();
@@ -94,7 +61,6 @@ const WorkStatusCalendar = () => {
       ...filterConfig,
       currentUser: currentUser
     });
->>>>>>> 28f8e6c
   };
 
   // 달력 데이터 생성
@@ -110,35 +76,6 @@ const WorkStatusCalendar = () => {
     const current = new Date(startDate);
 
     for (let i = 0; i < 42; i++) {
-<<<<<<< HEAD
-      const currentDateStr = current.toISOString().split('T')[0];
-      
-      // 프로젝트 기간 이벤트
-      const projectEvents = additionalWorks.filter(work => {
-        const startDate = new Date(work.start_date);
-        const endDate = new Date(work.end_date);
-        return current >= startDate && current <= endDate;
-      }).map(work => ({ ...work, eventType: 'project' }));
-
-      // 세부업무 마감일 이벤트
-      const detailEvents = additionalWorks
-        .flatMap(work => 
-          (work.detail_tasks || [])
-            .filter(task => task.due_date === currentDateStr)
-            .map(task => ({
-              id: `${work.id}_${task.id}`,
-              work_name: task.task_name,
-              work_owner: task.assigned_to || work.work_owner,
-              department: work.department,
-              parent_work: work,
-              eventType: 'detail',
-              end_date: task.due_date,
-              start_date: task.due_date
-            }))
-        );
-
-      const allEvents = [...projectEvents, ...detailEvents];
-=======
       // 업무와 세부업무를 모두 포함한 이벤트 목록 생성
       const workEvents = (additionalWorks || []).filter(work => {
         const startDate = new Date(work.start_date);
@@ -176,7 +113,6 @@ const WorkStatusCalendar = () => {
       }
 
       const allEvents = [...workEvents, ...detailEvents];
->>>>>>> 28f8e6c
 
       days.push({
         date: new Date(current),
@@ -203,65 +139,6 @@ const WorkStatusCalendar = () => {
     setCurrentDate(new Date());
   };
 
-<<<<<<< HEAD
-  // 프로젝트별 색상 팔레트 (노션 스타일)
-  const projectColorPalettes = [
-    { light: 'bg-blue-200', medium: 'bg-blue-400', dark: 'bg-blue-600', text: 'text-blue-800' },
-    { light: 'bg-green-200', medium: 'bg-green-400', dark: 'bg-green-600', text: 'text-green-800' },
-    { light: 'bg-purple-200', medium: 'bg-purple-400', dark: 'bg-purple-600', text: 'text-purple-800' },
-    { light: 'bg-pink-200', medium: 'bg-pink-400', dark: 'bg-pink-600', text: 'text-pink-800' },
-    { light: 'bg-orange-200', medium: 'bg-orange-400', dark: 'bg-orange-600', text: 'text-orange-800' },
-    { light: 'bg-teal-200', medium: 'bg-teal-400', dark: 'bg-teal-600', text: 'text-teal-800' },
-    { light: 'bg-indigo-200', medium: 'bg-indigo-400', dark: 'bg-indigo-600', text: 'text-indigo-800' },
-    { light: 'bg-red-200', medium: 'bg-red-400', dark: 'bg-red-600', text: 'text-red-800' },
-    { light: 'bg-yellow-200', medium: 'bg-yellow-400', dark: 'bg-yellow-600', text: 'text-yellow-800' },
-    { light: 'bg-cyan-200', medium: 'bg-cyan-400', dark: 'bg-cyan-600', text: 'text-cyan-800' },
-  ];
-
-  // 프로젝트 ID를 기반으로 색상 팔레트 할당
-  const getProjectColorPalette = (workId) => {
-    const hash = workId.split('').reduce((acc, char) => {
-      return char.charCodeAt(0) + ((acc << 5) - acc);
-    }, 0);
-    const index = Math.abs(hash) % projectColorPalettes.length;
-    return projectColorPalettes[index];
-  };
-
-  // 이벤트 색상 및 타입 결정
-  const getEventStyle = (work, eventType = 'project') => {
-    const palette = getProjectColorPalette(work.id);
-    const today = new Date();
-    const endDate = new Date(work.end_date);
-    const daysLeft = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
-
-    // 긴급도에 따른 색상 조정
-    let colorIntensity = 'medium';
-    if (daysLeft < 0) colorIntensity = 'dark'; // 지연 - 진한 색
-    else if (daysLeft <= 3) colorIntensity = 'dark'; // 임박 - 진한 색
-    else colorIntensity = 'light'; // 일반 - 연한 색
-
-    // 이벤트 타입별 색상 강도 조정
-    if (eventType === 'project') {
-      // 프로젝트 전체 기간: 연한 색상
-      return {
-        bg: palette.light,
-        border: palette.medium,
-        text: palette.text
-      };
-    } else if (eventType === 'detail') {
-      // 상세 일정 (하루하루): 진한 색상
-      return {
-        bg: palette.dark,
-        border: palette.dark,
-        text: 'text-white'
-      };
-    }
-
-    return {
-      bg: palette[colorIntensity],
-      border: palette.dark,
-      text: colorIntensity === 'dark' ? 'text-white' : palette.text
-=======
   // 날짜 펼치기/접기 토글
   const toggleDayExpansion = (dayString) => {
     setExpandedDays(prev => {
@@ -449,7 +326,6 @@ const WorkStatusCalendar = () => {
       bgClass,
       projectColors,
       priority
->>>>>>> 28f8e6c
     };
   };
 
@@ -468,51 +344,27 @@ const WorkStatusCalendar = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       {/* 헤더 */}
       <div className="mb-8">
-        <div className="flex justify-between items-start">
+        <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">📅 업무달력</h1>
             <p className="text-gray-600 mt-2">팀 전체의 업무 일정을 한눈에 확인하세요.</p>
           </div>
-          
-          <div className="flex items-center space-x-4">
-            {/* 사용자 필터 드롭다운 */}
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-600">👤 사용자 필터:</span>
-              <select
-                value={ui.selectedUserId}
-                onChange={handleUserFilterChange}
-                className="border border-gray-300 rounded-md px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                <option value="current_user">내 업무만</option>
-                <option value="all_users">전체 사용자</option>
-                {users.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {user.name} ({user.email})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="text-sm text-gray-500 bg-gray-100 px-3 py-2 rounded-lg">
-              현재 보기: <span className="font-medium text-gray-700">{getSelectedUserName()}</span>
-            </div>
-            
-            <div className="flex space-x-3">
-              <button
-                onClick={goToToday}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-              >
-                오늘
-              </button>
-              <select
-                value={viewMode}
-                onChange={(e) => setViewMode(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                <option value="month">월 보기</option>
-                <option value="week">주 보기</option>
-                <option value="day">일 보기</option>
-              </select>
-            </div>
+          <div className="flex space-x-3">
+            <button
+              onClick={goToToday}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              오늘
+            </button>
+            <select
+              value={viewMode}
+              onChange={(e) => setViewMode(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="month">월 보기</option>
+              <option value="week">주 보기</option>
+              <option value="day">일 보기</option>
+            </select>
           </div>
         </div>
       </div>
@@ -561,24 +413,6 @@ const WorkStatusCalendar = () => {
           </div>
           
           {/* 범례 */}
-<<<<<<< HEAD
-          <div className="flex items-center space-x-4 text-sm">
-            <div className="flex items-center space-x-1">
-              <div className="w-4 h-3 bg-blue-200 rounded border-l-2 border-blue-400"></div>
-              <span>프로젝트 기간</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <div className="w-4 h-3 bg-green-600 rounded"></div>
-              <span>상세 일정</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <div className="w-4 h-3 bg-red-600 rounded"></div>
-              <span>긴급/지연</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-200 to-purple-200"></div>
-              <span>프로젝트별 색상</span>
-=======
           <div className="flex items-center space-x-6 text-sm">
             {/* 업무 타입 범례 */}
             <div className="flex items-center space-x-4">
@@ -605,7 +439,6 @@ const WorkStatusCalendar = () => {
                 <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
                 <span>임박</span>
               </div>
->>>>>>> 28f8e6c
             </div>
           </div>
         </div>
@@ -653,33 +486,6 @@ const WorkStatusCalendar = () => {
                   {day.date.getDate()}
                 </div>
 
-<<<<<<< HEAD
-                {/* 이벤트들 */}
-                <div className="space-y-1">
-                  {day.events.slice(0, 3).map((event, eventIndex) => {
-                    const style = getEventStyle(event.parent_work || event, event.eventType);
-                    const isDetailEvent = event.eventType === 'detail';
-                    
-                    return (
-                    <div
-                      key={event.id}
-                      className={`text-xs px-2 py-1 rounded truncate cursor-pointer ${style.bg} ${style.text} ${
-                        isDetailEvent 
-                          ? 'border border-white shadow-sm font-medium' 
-                          : `border-l-2 ${style.border.replace('bg-', 'border-')}`
-                      }`}
-                      title={`${event.work_name} ${isDetailEvent ? '(세부업무)' : '(프로젝트)'} - ${event.department} - ${event.work_owner}`}
-                    >
-                      {isDetailEvent ? '📌 ' : ''}{event.work_name}
-                    </div>
-                    );
-                  })}
-                  {day.events.length > 3 && (
-                    <div className="text-xs text-gray-500 px-2">
-                      +{day.events.length - 3}개 더
-                    </div>
-                  )}
-=======
                 {/* 이벤트들 - 2열 그리드 레이아웃으로 공간 최적화 */}
                 <div className="space-y-0.5">
                   {(() => {
@@ -840,7 +646,6 @@ const WorkStatusCalendar = () => {
                       </>
                     );
                   })()}
->>>>>>> 28f8e6c
                 </div>
               </div>
             ))}

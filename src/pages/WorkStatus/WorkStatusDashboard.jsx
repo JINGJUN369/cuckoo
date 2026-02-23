@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useWorkStatusStore from '../../hooks/useWorkStatusStore';
 import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
-<<<<<<< HEAD
-=======
 import WorkFilterBar from '../../components/workstatus/WorkFilterBar';
->>>>>>> 28f8e6c
 
 /**
  * WorkStatusDashboard - 업무현황 대시보드
@@ -21,57 +18,29 @@ const WorkStatusDashboard = () => {
     additionalWorks,
     allAdditionalWorks,
     activityLogs,
-    users,
     loading,
     error,
-    ui,
     fetchAdditionalWorks,
     fetchActivityLogs,
-<<<<<<< HEAD
-    fetchUsers,
-    setSelectedUserId,
-    setupRealtimeSubscriptions
-=======
     setupRealtimeSubscriptions,
     setFilter,
     getAllAuthors
->>>>>>> 28f8e6c
   } = useWorkStatusStore();
 
   const [timeFilter, setTimeFilter] = useState('week'); // 'today', 'week', 'month'
 
   // 데이터 로드 및 실시간 구독
   useEffect(() => {
-    fetchUsers();
     fetchAdditionalWorks();
     fetchActivityLogs();
     const unsubscribe = setupRealtimeSubscriptions();
     return unsubscribe;
   }, []);
 
-<<<<<<< HEAD
-  // 사용자 필터 변경 핸들러
-  const handleUserFilterChange = (e) => {
-    setSelectedUserId(e.target.value);
-  };
-
-  // 현재 선택된 사용자 이름 가져오기
-  const getSelectedUserName = () => {
-    const { selectedUserId } = ui;
-    if (selectedUserId === 'current_user') {
-      return profile?.name || user?.email || '현재 사용자';
-    } else if (selectedUserId === 'all_users') {
-      return '전체 사용자';
-    } else {
-      const selectedUser = users.find(u => u.id === selectedUserId);
-      return selectedUser ? selectedUser.name : '선택된 사용자';
-    }
-=======
   // 필터 변경 핸들러 - 실제로는 사용되지 않음 (WorkFilterBar가 직접 store 사용)
   const handleFilterChange = (filterConfig) => {
     console.log('🔍 [Dashboard] Filter change triggered (unused):', filterConfig);
     // 이 함수는 더 이상 사용되지 않음 - WorkFilterBar가 직접 store의 setFilter를 사용해야 함
->>>>>>> 28f8e6c
   };
 
   // 통계 계산
@@ -83,26 +52,21 @@ const WorkStatusDashboard = () => {
     const pendingTasks = allTasks.filter(task => task.status === '대기').length;
     const onHoldTasks = allTasks.filter(task => task.status === '보류').length;
     
-    // 담당자별 통계
-    const ownerStats = additionalWorks.reduce((acc, work) => {
-      const owner = work.work_owner || '미할당';
-      if (!acc[owner]) {
-        acc[owner] = {
+    // 부서별 통계
+    const departmentStats = additionalWorks.reduce((acc, work) => {
+      if (!acc[work.department]) {
+        acc[work.department] = {
           totalWorks: 0,
           totalTasks: 0,
           completedTasks: 0,
-          inProgressTasks: 0,
-          completedWorks: 0
+          inProgressTasks: 0
         };
       }
-      acc[owner].totalWorks++;
-      if (work.status === '종결') {
-        acc[owner].completedWorks++;
-      }
+      acc[work.department].totalWorks++;
       const workTasks = work.detail_tasks || [];
-      acc[owner].totalTasks += workTasks.length;
-      acc[owner].completedTasks += workTasks.filter(t => t.status === '완료').length;
-      acc[owner].inProgressTasks += workTasks.filter(t => t.status === '진행').length;
+      acc[work.department].totalTasks += workTasks.length;
+      acc[work.department].completedTasks += workTasks.filter(t => t.status === '완료').length;
+      acc[work.department].inProgressTasks += workTasks.filter(t => t.status === '진행').length;
       return acc;
     }, {});
 
@@ -117,7 +81,7 @@ const WorkStatusDashboard = () => {
       pendingTasks,
       onHoldTasks,
       overallProgress,
-      ownerStats
+      departmentStats
     };
   }, [additionalWorks]);
 
@@ -148,35 +112,8 @@ const WorkStatusDashboard = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       {/* 헤더 */}
       <div className="mb-8">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">📊 업무현황</h1>
-            <p className="text-gray-600 mt-2">전체 업무 진행 상황을 실시간으로 모니터링합니다.</p>
-          </div>
-          
-          {/* 사용자 필터 드롭다운 */}
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-600">👤 사용자 필터:</span>
-              <select
-                value={ui.selectedUserId}
-                onChange={handleUserFilterChange}
-                className="border border-gray-300 rounded-md px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="current_user">내 업무만</option>
-                <option value="all_users">전체 사용자</option>
-                {users.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {user.name} ({user.email})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="text-sm text-gray-500 bg-gray-100 px-3 py-2 rounded-lg">
-              현재 보기: <span className="font-medium text-gray-700">{getSelectedUserName()}</span>
-            </div>
-          </div>
-        </div>
+        <h1 className="text-3xl font-bold text-gray-900">📊 업무현황</h1>
+        <p className="text-gray-600 mt-2">전체 업무 진행 상황을 실시간으로 모니터링합니다.</p>
       </div>
 
       {/* 에러 메시지 */}
@@ -309,23 +246,6 @@ const WorkStatusDashboard = () => {
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
-<<<<<<< HEAD
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <span className="mr-2">👤</span>
-            담당자별 현황
-          </h3>
-          <div className="space-y-3">
-            {Object.entries(stats.ownerStats)
-              .sort(([,a], [,b]) => b.totalWorks - a.totalWorks) // 업무 수 기준으로 정렬
-              .map(([owner, data]) => {
-              const workProgress = data.totalWorks > 0 ? Math.round((data.completedWorks / data.totalWorks) * 100) : 0;
-              const taskProgress = data.totalTasks > 0 ? Math.round((data.completedTasks / data.totalTasks) * 100) : 0;
-              return (
-                <div key={owner} className="border-b border-gray-100 pb-3 last:border-b-0">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-900">{owner}</span>
-                    <span className="text-xs text-gray-500">{workProgress}%</span>
-=======
           <h3 className="text-lg font-semibold text-gray-900 mb-4">전체 업무 진행현황</h3>
           {console.log('🔍 [Dashboard] Rendering progress section with additionalWorks:', additionalWorks.length, 'works')}
           <div className="space-y-3">
@@ -339,33 +259,17 @@ const WorkStatusDashboard = () => {
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium text-gray-900">{work.work_name}</span>
                     <span className="text-xs text-gray-500">{progress}%</span>
->>>>>>> 28f8e6c
                   </div>
                   <div className="w-full h-2 bg-gray-200 rounded-full">
                     <div 
-                      className="h-2 bg-blue-500 rounded-full transition-all duration-500"
-                      style={{ width: `${workProgress}%` }}
+                      className="h-2 bg-indigo-500 rounded-full transition-all duration-500"
+                      style={{ width: `${progress}%` }}
                     ></div>
                   </div>
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
-<<<<<<< HEAD
-                    <span>업무: {data.totalWorks}개 (완료: {data.completedWorks}개)</span>
-                    <span>세부업무: {data.completedTasks}/{data.totalTasks}</span>
-=======
                     <span>{work.work_owner} | {work.department}</span>
                     <span>세부업무: {completedTasks}/{totalTasks}</span>
->>>>>>> 28f8e6c
                   </div>
-                  {data.totalTasks > 0 && (
-                    <div className="mt-1">
-                      <div className="w-full h-1 bg-gray-100 rounded-full">
-                        <div 
-                          className="h-1 bg-green-400 rounded-full transition-all duration-500"
-                          style={{ width: `${taskProgress}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               );
             })}
@@ -375,9 +279,6 @@ const WorkStatusDashboard = () => {
               </div>
             )}
           </div>
-          {Object.keys(stats.ownerStats).length === 0 && (
-            <p className="text-gray-500 text-center py-4">등록된 업무가 없습니다.</p>
-          )}
         </div>
       </div>
 

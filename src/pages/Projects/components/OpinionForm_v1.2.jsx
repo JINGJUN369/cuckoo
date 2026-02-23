@@ -98,18 +98,15 @@ const OpinionForm_v1_2 = ({
       // 새 의견 객체 생성
       const newOpinion = {
         project_id: project.id,
-        project_is_completed: false, 
+        project_is_completed: false,
         author_name: profile.name || profile.email,
-        author_team: profile.team || '일반팀',
         message: formData.message.trim(),
-        stage: formData.stage === 'stage1' ? 1 : formData.stage === 'stage2' ? 2 : formData.stage === 'stage3' ? 3 : 1,
+        stage: formData.stage === 'stage1' ? 1 : formData.stage === 'stage2' ? 2 : formData.stage === 'stage3' ? 3 : null,
         status: 'open',
         priority: formData.priority,
         reply: null,
         created_by: profile.id,
-        updated_by: profile.id,
-        migrated_from_local: false,
-        local_created_at: null
+        updated_by: profile.id
       };
 
       // 의견 추가

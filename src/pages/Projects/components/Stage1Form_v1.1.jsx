@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Input } from '../../../components/ui';
 import { getStageProgress } from '../../../types/project';
 
@@ -14,14 +14,21 @@ import { getStageProgress } from '../../../types/project';
 const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
   const [validationErrors, setValidationErrors] = useState({});
   const [touched, setTouched] = useState({});
-  
+  const [localFormData, setLocalFormData] = useState({});
+  const saveTimeoutRef = useRef(null);
+
   console.log(`📝 [v1.1] Stage1Form rendered - mode: ${mode}, project: ${project?.name}`);
-  
+
   const stage1Data = useMemo(() => {
     const data = project?.stage1 || {};
     console.log(`📋 [v1.1] Stage1 data loaded:`, data);
     return data;
   }, [project?.stage1]);
+
+  // 로컬 폼 데이터 초기화
+  useEffect(() => {
+    setLocalFormData(stage1Data);
+  }, [stage1Data]);
   
   // 필드 정의 (v1.1 확장)
   const formFields = useMemo(() => [
@@ -138,37 +145,51 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
     return null;
   }, [stage1Data.launchDate, stage1Data.massProductionDate]);
 
-  // 필드 업데이트 핸들러
+  // Debounced save function
+  const debouncedSave = useCallback((updatedData) => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      if (onUpdate && mode === 'edit') {
+        console.log(`💾 [v1.1] Debounced save triggered`);
+        try {
+          onUpdate(updatedData);
+          console.log(`✅ [v1.1] onUpdate called successfully`);
+        } catch (error) {
+          console.error(`❌ [v1.1] Error calling onUpdate:`, error);
+        }
+      }
+    }, 500); // 500ms 지연
+  }, [onUpdate, mode]);
+
+  // 필드 업데이트 핸들러 (즉시 로컬 상태 업데이트, 지연된 저장)
   const handleFieldChange = useCallback((field, value) => {
     console.log(`📝 [v1.1] Stage1Form field updated: ${field} = ${value}`);
-    
+
     // 터치 상태 업데이트
     setTouched(prev => ({ ...prev, [field]: true }));
-    
+
     // 유효성 검사
     const fieldDef = formFields.find(f => f.key === field);
     const error = validateField(field, value, fieldDef?.required);
-    
+
     setValidationErrors(prev => ({ ...prev, [field]: error }));
-    
-    // 상위로 변경사항 전달 - 전체 stage1 데이터 업데이트
-    if (onUpdate && mode === 'edit') {
-      const updatedStage1Data = {
-        ...stage1Data,
-        [field]: value
-      };
-      console.log(`📝 [v1.1] Calling onUpdate with updated data for field ${field}`);
-      
-      try {
-        onUpdate(updatedStage1Data);
-        console.log(`✅ [v1.1] onUpdate called successfully`);
-      } catch (error) {
-        console.error(`❌ [v1.1] Error calling onUpdate:`, error);
-      }
-    } else {
-      console.log(`📝 [v1.1] Not calling onUpdate - mode: ${mode}, onUpdate: ${!!onUpdate}`);
-    }
-  }, [formFields, validateField, onUpdate, mode]);
+
+    // 로컬 상태 즉시 업데이트
+    const updatedData = {
+      ...localFormData,
+      [field]: value
+    };
+    setLocalFormData(updatedData);
+
+    // 디바운스된 저장
+    debouncedSave({
+      ...stage1Data,
+      [field]: value
+    });
+  }, [formFields, validateField, localFormData, stage1Data, debouncedSave]);
 
   // 체크박스 업데이트 핸들러
   const handleExecutedChange = useCallback((field, checked) => {
@@ -186,8 +207,54 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
   // 진행률 계산 (표준화된 함수 사용)
   const progressPercentage = useMemo(() => {
     if (!project) return 0;
-    return getStageProgress(project, 'stage1');
+    const progress = getStageProgress(project, 'stage1');
+    console.log('🎯 [Stage1Form] Final progress percentage:', progress);
+    return progress;
   }, [project]);
+
+  // 미완성 필드 찾기
+  const incompleteFields = useMemo(() => {
+    const currentData = mode === 'edit' ? localFormData : stage1Data;
+    const incomplete = [];
+
+    console.log('🔍 [Stage1] Debug - currentData:', currentData);
+    console.log('🔍 [Stage1] Debug - formFields:', formFields);
+    console.log('🔍 [Stage1] Required fields:', formFields.filter(f => f.required).map(f => f.key));
+    console.log('🔍 [Stage1] Date fields with execution:', formFields.filter(f => f.hasExecuted).map(f => ({ date: f.key, executed: f.hasExecuted })));
+
+    formFields.forEach(field => {
+      if (field.required && !currentData[field.key]) {
+        console.log(`❌ [Stage1] Missing required field: ${field.key}`, field.label);
+        incomplete.push({
+          key: field.key,
+          label: field.label,
+          type: field.type
+        });
+      }
+      // 날짜 필드의 실행완료 체크
+      if (field.hasExecuted && currentData[field.key] && !currentData[field.hasExecuted]) {
+        console.log(`⚠️ [Stage1] Missing execution for: ${field.hasExecuted}`, field.label);
+        incomplete.push({
+          key: field.hasExecuted,
+          label: `${field.label} 실행완료`,
+          type: 'checkbox'
+        });
+      }
+    });
+
+    console.log('📊 [Stage1] Final incomplete fields:', incomplete);
+    return incomplete;
+  }, [formFields, localFormData, stage1Data, mode]);
+
+  // 필드가 미완성인지 확인하는 함수
+  const isFieldIncomplete = useCallback((fieldKey, hasExecuted = null) => {
+    const currentData = mode === 'edit' ? localFormData : stage1Data;
+    if (hasExecuted) {
+      return currentData[fieldKey] && !currentData[hasExecuted];
+    }
+    const field = formFields.find(f => f.key === fieldKey);
+    return field?.required && !currentData[fieldKey];
+  }, [formFields, localFormData, stage1Data, mode]);
 
   // 읽기 전용 모드 렌더링
   if (mode === 'view') {
@@ -198,10 +265,37 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
             <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
             <h3 className="text-xl font-semibold text-blue-600">1차 단계 - 기본 정보</h3>
           </div>
-          <div className="text-sm text-gray-600">
-            진행률: {progressPercentage}%
+          <div className="flex items-center space-x-4">
+            {incompleteFields.length > 0 && (
+              <div className="flex items-center text-amber-600 bg-amber-50 px-3 py-1 rounded-full text-sm">
+                <span className="mr-2">⚠️</span>
+                미완성 {incompleteFields.length}개
+              </div>
+            )}
+            <div className={`text-sm font-medium ${
+              progressPercentage === 100 ? 'text-green-600' : 'text-gray-600'
+            }`}>
+              진행률: {progressPercentage}%
+            </div>
           </div>
         </div>
+
+        {/* 미완성 필드 상세 알림 */}
+        {incompleteFields.length > 0 && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center mb-2">
+              <span className="text-amber-600 font-medium">📝 완료하지 않은 항목:</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {incompleteFields.map((field, index) => (
+                <div key={field.key} className="flex items-center text-sm text-amber-700">
+                  <span className="mr-2">•</span>
+                  {field.label}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {formFields.map(field => (
@@ -209,6 +303,11 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {field.label}
                 {field.required && <span className="text-red-500 ml-1">*</span>}
+                {isFieldIncomplete(field.key) && (
+                  <span className="ml-2 text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded">
+                    미완성
+                  </span>
+                )}
               </label>
               
               {field.type === 'date' ? (
@@ -257,6 +356,11 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
         <div className="flex items-center">
           <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
           <h3 className="text-xl font-semibold text-blue-600">1차 단계 - 기본 정보</h3>
+          {incompleteFields.length > 0 && (
+            <span className="ml-3 px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+              미완성 {incompleteFields.length}개
+            </span>
+          )}
         </div>
         <div className="flex items-center space-x-4">
           <div className="text-sm text-gray-600">
@@ -271,7 +375,25 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
           </div>
         </div>
       </div>
-      
+
+      {/* 미완성 필드 경고 영역 (편집 모드) */}
+      {incompleteFields.length > 0 && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-center mb-2">
+            <div className="w-4 h-4 bg-amber-500 rounded-full mr-2"></div>
+            <h4 className="text-sm font-medium text-amber-800">완료되지 않은 항목들</h4>
+          </div>
+          <ul className="text-sm text-amber-700 space-y-1">
+            {incompleteFields.map((item, index) => (
+              <li key={index} className="flex items-center">
+                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-2"></span>
+                {item.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {formFields.map(field => (
           <div key={field.key} className={`${field.gridCols === 2 ? 'md:col-span-2' : ''}`}>
@@ -284,7 +406,7 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
                 <div className="flex items-center space-x-3">
                   <Input
                     type="date"
-                    value={stage1Data[field.key] || ''}
+                    value={localFormData[field.key] || ''}
                     onChange={(e) => handleFieldChange(field.key, e.target.value)}
                     className={`flex-1 ${
                       validationErrors[field.key] && touched[field.key] 
@@ -313,7 +435,7 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
                 <Input
                   label={field.label}
                   required={field.required}
-                  value={stage1Data[field.key] || ''}
+                  value={localFormData[field.key] || ''}
                   onChange={(e) => handleFieldChange(field.key, e.target.value)}
                   placeholder={field.placeholder}
                   className={
@@ -336,7 +458,7 @@ const Stage1Form_v11 = ({ project, onUpdate, mode = 'edit' }) => {
         <label className="block text-sm font-medium text-gray-700 mb-2">비고 (공용 메모)</label>
         <div className="border border-gray-300 rounded-lg p-3 bg-gray-50">
           <textarea
-            value={stage1Data.notes || ''}
+            value={localFormData.notes || ''}
             onChange={(e) => handleFieldChange('notes', e.target.value)}
             rows={6}
             placeholder="이 영역은 모든 사용자가 공유하는 메모장입니다. 프로젝트 관련 중요 사항, 변경 내용, 특이사항 등을 자유롭게 작성해주세요..."

@@ -19,20 +19,10 @@ const WorkStatusManagePage = () => {
   const { user, profile } = useSupabaseAuth();
   const {
     additionalWorks,
-<<<<<<< HEAD
-    users,
-=======
     allAdditionalWorks,
->>>>>>> 28f8e6c
     loading,
     error,
-    ui,
     fetchAdditionalWorks,
-    fetchUsers,
-    setSelectedUserId,
-    createAdditionalWork,
-    updateAdditionalWork,
-    deleteAdditionalWork,
     addDetailTask,
     updateTaskStatus,
     updateProgressContent,
@@ -47,134 +37,21 @@ const WorkStatusManagePage = () => {
   } = useWorkStatusStore();
 
   const [showCreateWorkModal, setShowCreateWorkModal] = useState(false);
-  const [showEditWorkModal, setShowEditWorkModal] = useState(false);
   const [selectedWorkId, setSelectedWorkId] = useState(null);
-  const [editingWork, setEditingWork] = useState(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [editingProgress, setEditingProgress] = useState({});
-<<<<<<< HEAD
-  const [newWorkData, setNewWorkData] = useState({
-    work_name: '',
-    work_owner: '',
-    department: '',
-    start_date: '',
-    end_date: '',
-    description: '',
-    status: '진행중',
-    priority: '보통'
-  });
-
-  // 현재 로그인 사용자 이름 가져오기
-  const getCurrentUserName = () => {
-    if (profile?.name) return profile.name;
-    if (user?.email) return user.email;
-    const currentUserProfile = users.find(u => u.id === user?.id || u.email === user?.email);
-    return currentUserProfile?.name || user?.email || '알 수 없음';
-  };
-
-  // 업무 종결/삭제 권한 확인 함수
-  const canDeleteOrCompleteWork = (work) => {
-    if (!user) return false;
-    
-    // 관리자는 모든 권한을 가짐
-    if (profile?.role === 'admin') return true;
-    
-    // 담당자(work_owner)는 자신의 업무에 대한 권한을 가짐
-    const currentUserName = getCurrentUserName();
-    return work.work_owner === currentUserName;
-  };
-
-  // 세부업무 삭제 권한 확인 함수
-  const canDeleteDetailTask = (work, task) => {
-    if (!user) return false;
-    
-    // 관리자는 모든 권한을 가짐
-    if (profile?.role === 'admin') return true;
-    
-    const currentUserName = getCurrentUserName();
-    
-    // 업무 담당자(work_owner)는 해당 업무의 모든 세부업무를 삭제할 수 있음
-    if (work.work_owner === currentUserName) return true;
-    
-    // 세부업무 담당자(assigned_to)는 자신의 세부업무만 삭제할 수 있음
-    return task.assignee === currentUserName;
-  };
-
-  // 노션 스타일 색상 가져오기 (상태와 우선순위에 따라)
-  const getNotionStyleColors = (work) => {
-    const { status, priority } = work;
-    
-    // 상태별 색상
-    if (status === '종결') {
-      return {
-        bg: 'bg-gradient-to-r from-green-500 to-green-600',
-        text: 'text-green-100'
-      };
-    } else if (status === '보류') {
-      return {
-        bg: 'bg-gradient-to-r from-orange-500 to-orange-600',
-        text: 'text-orange-100'
-      };
-    }
-    
-    // 우선순위별 색상
-    if (priority === '높음') {
-      return {
-        bg: 'bg-gradient-to-r from-red-500 to-red-600',
-        text: 'text-red-100'
-      };
-    } else if (priority === '낮음') {
-      return {
-        bg: 'bg-gradient-to-r from-blue-500 to-blue-600',
-        text: 'text-blue-100'
-      };
-    }
-    
-    // 기본 색상 (노션 스타일 회색)
-    return {
-      bg: 'bg-gradient-to-r from-slate-600 to-slate-700',
-      text: 'text-slate-200'
-    };
-  };
-  const [newTaskData, setNewTaskData] = useState({
-    task_name: '',
-    description: '',
-    assigned_to: '',
-    due_date: ''
-  });
-=======
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedWork, setSelectedWork] = useState(null);
   const [draggedTask, setDraggedTask] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
->>>>>>> 28f8e6c
 
   // 데이터 로드 및 실시간 구독
   useEffect(() => {
-    fetchUsers();
     fetchAdditionalWorks();
     const unsubscribe = setupRealtimeSubscriptions();
     return unsubscribe;
   }, []);
-
-  // 사용자 필터 변경 핸들러
-  const handleUserFilterChange = (e) => {
-    setSelectedUserId(e.target.value);
-  };
-
-  // 현재 선택된 사용자 이름 가져오기
-  const getSelectedUserName = () => {
-    const { selectedUserId } = ui;
-    if (selectedUserId === 'current_user') {
-      return profile?.name || user?.email || '현재 사용자';
-    } else if (selectedUserId === 'all_users') {
-      return '전체 사용자';
-    } else {
-      const selectedUser = users.find(u => u.id === selectedUserId);
-      return selectedUser ? selectedUser.name : '선택된 사용자';
-    }
-  };
 
   // 에러 클리어
   useEffect(() => {
@@ -184,11 +61,6 @@ const WorkStatusManagePage = () => {
     }
   }, [error]);
 
-<<<<<<< HEAD
-  // 새업무 추가 핸들러
-  const handleCreateWork = async (e) => {
-    e.preventDefault();
-=======
   // 필터 변경 핸들러
   const handleFilterChange = (filterConfig) => {
     const currentUser = profile?.name || user?.name || user?.email || '';
@@ -200,91 +72,10 @@ const WorkStatusManagePage = () => {
 
   // 세부업무 추가 핸들러
   const handleAddTask = async (workId, taskData) => {
->>>>>>> 28f8e6c
     try {
-      // work_owner는 서버에서 자동으로 설정되므로 제거
-      const { work_owner, ...workDataToSubmit } = newWorkData;
-      await createAdditionalWork(workDataToSubmit);
-      setShowCreateWorkModal(false);
-      setNewWorkData({
-        work_name: '',
-        work_owner: '',
-        department: '',
-        start_date: '',
-        end_date: '',
-        description: '',
-        status: '진행중',
-        priority: '보통'
-      });
-    } catch (error) {
-      console.error('Failed to create work:', error);
-    }
-  };
-
-  // 업무 수정 핸들러
-  const handleEditWork = (work) => {
-    setEditingWork({
-      work_name: work.work_name,
-      work_owner: work.work_owner,
-      department: work.department,
-      start_date: work.start_date,
-      end_date: work.end_date,
-      description: work.description,
-      status: work.status,
-      priority: work.priority
-    });
-    setSelectedWorkId(work.id);
-    setShowEditWorkModal(true);
-  };
-
-  // 업무 수정 저장 핸들러
-  const handleUpdateWork = async (e) => {
-    e.preventDefault();
-    try {
-      await updateAdditionalWork(selectedWorkId, editingWork);
-      setShowEditWorkModal(false);
-      setEditingWork(null);
-      setSelectedWorkId(null);
-    } catch (error) {
-      console.error('Failed to update work:', error);
-    }
-  };
-
-  // 업무 삭제 핸들러
-  const handleDeleteWork = async (workId) => {
-    if (window.confirm('정말로 이 업무를 삭제하시겠습니까? 모든 관련 데이터가 영구적으로 삭제됩니다.')) {
-      try {
-        await deleteAdditionalWork(workId);
-      } catch (error) {
-        console.error('Failed to delete work:', error);
-      }
-    }
-  };
-
-  // 업무 종결 핸들러
-  const handleCompleteWork = async (workId) => {
-    if (window.confirm('이 업무를 종결하시겠습니까? 업무 목록에서 숨겨지고 종결된 업무 목록에서만 볼 수 있습니다.')) {
-      try {
-        await updateAdditionalWork(workId, { status: '종결' });
-      } catch (error) {
-        console.error('Failed to complete work:', error);
-      }
-    }
-  };
-
-  // 세부업무 추가 핸들러
-  const handleAddTask = async (e) => {
-    e.preventDefault();
-    try {
-      await addDetailTask(selectedWorkId, newTaskData);
+      await addDetailTask(workId, taskData);
       setShowTaskModal(false);
       setSelectedWorkId(null);
-      setNewTaskData({
-        task_name: '',
-        description: '',
-        assigned_to: '',
-        due_date: ''
-      });
     } catch (error) {
       console.error('Failed to add task:', error);
     }
@@ -414,24 +205,6 @@ const WorkStatusManagePage = () => {
     return styles[status] || styles['대기'];
   };
 
-  // 업무 진행률 계산
-  const calculateWorkProgress = (work) => {
-    const tasks = work.detail_tasks || [];
-    if (tasks.length === 0) return 0;
-    
-    const completedTasks = tasks.filter(task => task.status === '완료').length;
-    return Math.round((completedTasks / tasks.length) * 100);
-  };
-
-  // 진행률 색상 스타일
-  const getProgressColor = (progress) => {
-    if (progress === 100) return 'bg-green-500';
-    if (progress >= 75) return 'bg-blue-500';
-    if (progress >= 50) return 'bg-yellow-500';
-    if (progress >= 25) return 'bg-orange-500';
-    return 'bg-gray-400';
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -447,42 +220,18 @@ const WorkStatusManagePage = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       {/* 헤더 */}
       <div className="mb-8">
-        <div className="flex justify-between items-start">
+        <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">📋 업무관리</h1>
             <p className="text-gray-600 mt-2">추가업무 및 세부업무를 관리하고 진행상황을 실시간으로 공유합니다.</p>
           </div>
-          
-          <div className="flex items-center space-x-4">
-            {/* 사용자 필터 드롭다운 */}
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-600">👤 사용자 필터:</span>
-              <select
-                value={ui.selectedUserId}
-                onChange={handleUserFilterChange}
-                className="border border-gray-300 rounded-md px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                <option value="current_user">내 업무만</option>
-                <option value="all_users">전체 사용자</option>
-                {users.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {user.name} ({user.email})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="text-sm text-gray-500 bg-gray-100 px-3 py-2 rounded-lg">
-              현재 보기: <span className="font-medium text-gray-700">{getSelectedUserName()}</span>
-            </div>
-            
-            <button
-              onClick={() => setShowCreateWorkModal(true)}
-              className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
-            >
-              <span className="mr-2">➕</span>
-              새 업무 추가
-            </button>
-          </div>
+          <button
+            onClick={() => setShowCreateWorkModal(true)}
+            className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
+          >
+            <span className="mr-2">➕</span>
+            새 업무 추가
+          </button>
         </div>
       </div>
 
@@ -562,82 +311,18 @@ const WorkStatusManagePage = () => {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <span className="text-2xl">👤</span>
+              <span className="text-2xl">👥</span>
             </div>
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">활성 담당자</p>
+              <p className="text-sm font-medium text-gray-500">참여자</p>
               <p className="text-2xl font-semibold text-purple-600">
-                {new Set(additionalWorks
-                  .filter(work => work.status !== '종결')
-                  .map(work => work.work_owner)
-                  .filter(Boolean)
-                ).size}명
+                {new Set(additionalWorks.flatMap(work => 
+                  [work.work_owner, ...(work.detail_tasks?.map(task => task.assignee).filter(Boolean) || [])]
+                )).size}
               </p>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* 담당자별 현황 */}
-      <div className="bg-white rounded-lg shadow mb-6 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-          <span className="mr-2">👥</span>
-          담당자별 업무 현황
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {(() => {
-            const ownerStats = {};
-            additionalWorks.forEach(work => {
-              if (work.work_owner) {
-                if (!ownerStats[work.work_owner]) {
-                  ownerStats[work.work_owner] = {
-                    total: 0,
-                    inProgress: 0,
-                    completed: 0
-                  };
-                }
-                ownerStats[work.work_owner].total += 1;
-                
-                if (work.status === '종결') {
-                  ownerStats[work.work_owner].completed += 1;
-                } else {
-                  ownerStats[work.work_owner].inProgress += 1;
-                }
-              }
-            });
-
-            return Object.entries(ownerStats).map(([owner, stats]) => (
-              <div key={owner} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <div className="flex items-center mb-2">
-                  <span className="text-sm font-medium text-gray-900">{owner}</span>
-                </div>
-                <div className="space-y-1 text-xs text-gray-600">
-                  <div className="flex justify-between">
-                    <span>전체:</span>
-                    <span className="font-medium">{stats.total}개</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>진행중:</span>
-                    <span className="font-medium text-blue-600">{stats.inProgress}개</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>완료:</span>
-                    <span className="font-medium text-green-600">{stats.completed}개</span>
-                  </div>
-                </div>
-                <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${stats.total > 0 ? (stats.completed / stats.total) * 100 : 0}%` }}
-                  ></div>
-                </div>
-              </div>
-            ));
-          })()}
-        </div>
-        {additionalWorks.length === 0 && (
-          <p className="text-gray-500 text-center py-8">등록된 업무가 없습니다.</p>
-        )}
       </div>
 
       {/* 업무 목록 */}
@@ -655,33 +340,14 @@ const WorkStatusManagePage = () => {
             </button>
           </div>
         ) : (
-          additionalWorks.map((work) => {
-            const colors = getNotionStyleColors(work);
-            return (
+          additionalWorks.map((work) => (
             <div key={work.id} className="bg-white rounded-lg shadow overflow-hidden">
               {/* 업무 헤더 */}
-              <div className={`${colors.bg} text-white p-6`}>
+              <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-6">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-xl font-bold">{work.work_name}</h3>
-                      
-                      {/* 진행률 표시 */}
-                      <div className="flex items-center space-x-3">
-                        <div className="text-right">
-                          <div className={`text-sm ${colors.text}`}>진행률</div>
-                          <div className="text-lg font-bold">{calculateWorkProgress(work)}%</div>
-                        </div>
-                        <div className="w-20 h-2 bg-white bg-opacity-30 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full transition-all duration-500 ${getProgressColor(calculateWorkProgress(work))}`}
-                            style={{ width: `${calculateWorkProgress(work)}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className={`flex flex-wrap gap-4 ${colors.text}`}>
+                    <h3 className="text-xl font-bold mb-2">{work.work_name}</h3>
+                    <div className="flex flex-wrap gap-4 text-indigo-100">
                       <div className="flex items-center">
                         <span className="mr-2">👤</span>
                         <span>{work.work_owner}</span>
@@ -698,60 +364,8 @@ const WorkStatusManagePage = () => {
                         <span className="mr-2">⏱️</span>
                         <span>{work.duration_days}일</span>
                       </div>
-                      <div className="flex items-center">
-                        <span className="mr-2">📋</span>
-                        <span>{work.detail_tasks?.filter(task => task.status === '완료').length || 0}/{work.detail_tasks?.length || 0} 완료</span>
-                      </div>
                     </div>
                   </div>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => {
-                        setSelectedWorkId(work.id);
-                        setShowTaskModal(true);
-                      }}
-                      className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition-colors flex items-center"
-                    >
-                      <span className="mr-2">➕</span>
-                      세부업무 추가
-                    </button>
-                    
-                    <div className="relative group">
-                      <button className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-3 py-2 rounded-lg transition-colors">
-                        <span>⚙️</span>
-                      </button>
-                      
-                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
-                        <button
-                          onClick={() => handleEditWork(work)}
-                          className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 rounded-t-lg flex items-center"
-                        >
-                          <span className="mr-2">✏️</span>
-                          업무 수정
-                        </button>
-                        {canDeleteOrCompleteWork(work) && (
-                          <>
-                            <button
-                              onClick={() => handleCompleteWork(work.id)}
-                              className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 flex items-center"
-                            >
-                              <span className="mr-2">✅</span>
-                              업무 종결
-                            </button>
-                            <button
-                              onClick={() => handleDeleteWork(work.id)}
-                              className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 rounded-b-lg flex items-center"
-                            >
-                              <span className="mr-2">🗑️</span>
-                              업무 삭제
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-<<<<<<< HEAD
-=======
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => {
@@ -807,10 +421,9 @@ const WorkStatusManagePage = () => {
                       </>
                     )}
                   </div>
->>>>>>> 28f8e6c
                 </div>
                 {work.description && (
-                  <p className={`mt-3 ${colors.text}`}>{work.description}</p>
+                  <p className="mt-3 text-indigo-100">{work.description}</p>
                 )}
               </div>
 
@@ -910,18 +523,6 @@ const WorkStatusManagePage = () => {
                               <option value="피드백">피드백</option>
                             </select>
                             
-<<<<<<< HEAD
-                            {/* 삭제 버튼 - 권한이 있는 사용자만 표시 */}
-                            {canDeleteDetailTask(work, task) && (
-                              <button
-                                onClick={() => deleteDetailTask(task.id)}
-                                className="text-gray-400 hover:text-red-500 transition-colors"
-                                title="세부업무 삭제"
-                              >
-                                🗑️
-                              </button>
-                            )}
-=======
                             {/* 삭제 버튼 */}
                             <button
                               onClick={() => deleteDetailTask(task.id)}
@@ -930,7 +531,6 @@ const WorkStatusManagePage = () => {
                             >
                               ×
                             </button>
->>>>>>> 28f8e6c
                           </div>
                         </div>
                         
@@ -1015,8 +615,7 @@ const WorkStatusManagePage = () => {
                 )}
               </div>
             </div>
-          );
-          })
+          ))
         )}
       </div>
 
@@ -1026,338 +625,6 @@ const WorkStatusManagePage = () => {
         onClose={() => setShowCreateWorkModal(false)}
       />
       
-<<<<<<< HEAD
-      {showCreateWorkModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold mb-6 flex items-center">
-              <span className="mr-2">➕</span>
-              새 업무 추가
-            </h3>
-            
-            <form onSubmit={handleCreateWork} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">업무명 *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newWorkData.work_name}
-                    onChange={(e) => setNewWorkData({...newWorkData, work_name: e.target.value})}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="업무명을 입력하세요"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">담당자 *</label>
-                  <div className="w-full p-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-700">
-                    <div className="flex items-center">
-                      <span className="mr-2">👤</span>
-                      <span>{getCurrentUserName()}</span>
-                      <span className="ml-2 text-sm text-gray-500">(로그인 사용자)</span>
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-500 mt-1">담당자는 로그인된 사용자로 자동 설정됩니다.</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">부서 *</label>
-                  <select
-                    required
-                    value={newWorkData.department}
-                    onChange={(e) => setNewWorkData({...newWorkData, department: e.target.value})}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    <option value="">부서를 선택하세요</option>
-                    <option value="마케팅팀">마케팅팀</option>
-                    <option value="IT개발팀">IT개발팀</option>
-                    <option value="고객지원팀">고객지원팀</option>
-                    <option value="인사팀">인사팀</option>
-                    <option value="품질관리팀">품질관리팀</option>
-                    <option value="구매팀">구매팀</option>
-                    <option value="재무팀">재무팀</option>
-                    <option value="교육팀">교육팀</option>
-                    <option value="총무팀">총무팀</option>
-                    <option value="IT운영팀">IT운영팀</option>
-                    <option value="기타">기타</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">우선순위</label>
-                  <select
-                    value={newWorkData.priority}
-                    onChange={(e) => setNewWorkData({...newWorkData, priority: e.target.value})}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    <option value="낮음">낮음</option>
-                    <option value="보통">보통</option>
-                    <option value="높음">높음</option>
-                    <option value="긴급">긴급</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">시작일 *</label>
-                  <input
-                    type="date"
-                    required
-                    value={newWorkData.start_date}
-                    onChange={(e) => setNewWorkData({...newWorkData, start_date: e.target.value})}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">종료일 *</label>
-                  <input
-                    type="date"
-                    required
-                    value={newWorkData.end_date}
-                    onChange={(e) => setNewWorkData({...newWorkData, end_date: e.target.value})}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">업무 설명</label>
-                <textarea
-                  value={newWorkData.description}
-                  onChange={(e) => setNewWorkData({...newWorkData, description: e.target.value})}
-                  rows={4}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="업무에 대한 상세 설명을 입력하세요"
-                />
-              </div>
-              
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateWorkModal(false)}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
-                >
-                  취소
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  업무 추가
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      
-      {/* 업무 수정 모달 */}
-      {showEditWorkModal && editingWork && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold mb-6 flex items-center">
-              <span className="mr-2">✏️</span>
-              업무 수정
-            </h3>
-            
-            <form onSubmit={handleUpdateWork} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">업무명 *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editingWork.work_name}
-                    onChange={(e) => setEditingWork({...editingWork, work_name: e.target.value})}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="업무명을 입력하세요"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">담당자 *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editingWork.work_owner}
-                    onChange={(e) => setEditingWork({...editingWork, work_owner: e.target.value})}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="담당자명을 입력하세요"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">부서 *</label>
-                  <select
-                    required
-                    value={editingWork.department}
-                    onChange={(e) => setEditingWork({...editingWork, department: e.target.value})}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    <option value="">부서를 선택하세요</option>
-                    <option value="마케팅팀">마케팅팀</option>
-                    <option value="IT개발팀">IT개발팀</option>
-                    <option value="고객지원팀">고객지원팀</option>
-                    <option value="인사팀">인사팀</option>
-                    <option value="품질관리팀">품질관리팀</option>
-                    <option value="구매팀">구매팀</option>
-                    <option value="재무팀">재무팀</option>
-                    <option value="교육팀">교육팀</option>
-                    <option value="총무팀">총무팀</option>
-                    <option value="IT운영팀">IT운영팀</option>
-                    <option value="기타">기타</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">우선순위</label>
-                  <select
-                    value={editingWork.priority}
-                    onChange={(e) => setEditingWork({...editingWork, priority: e.target.value})}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    <option value="낮음">낮음</option>
-                    <option value="보통">보통</option>
-                    <option value="높음">높음</option>
-                    <option value="긴급">긴급</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">시작일 *</label>
-                  <input
-                    type="date"
-                    required
-                    value={editingWork.start_date}
-                    onChange={(e) => setEditingWork({...editingWork, start_date: e.target.value})}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">종료일 *</label>
-                  <input
-                    type="date"
-                    required
-                    value={editingWork.end_date}
-                    onChange={(e) => setEditingWork({...editingWork, end_date: e.target.value})}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">업무 설명</label>
-                <textarea
-                  value={editingWork.description}
-                  onChange={(e) => setEditingWork({...editingWork, description: e.target.value})}
-                  rows={4}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="업무에 대한 상세 설명을 입력하세요"
-                />
-              </div>
-              
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowEditWorkModal(false);
-                    setEditingWork(null);
-                    setSelectedWorkId(null);
-                  }}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
-                >
-                  취소
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  업무 수정
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      
-      {showTaskModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-lg">
-            <h3 className="text-xl font-bold mb-6 flex items-center">
-              <span className="mr-2">📝</span>
-              세부업무 추가
-            </h3>
-            
-            <form onSubmit={handleAddTask} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">업무명 *</label>
-                <input
-                  type="text"
-                  required
-                  value={newTaskData.task_name}
-                  onChange={(e) => setNewTaskData({...newTaskData, task_name: e.target.value})}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="세부업무명을 입력하세요"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">담당자</label>
-                <input
-                  type="text"
-                  value={newTaskData.assigned_to}
-                  onChange={(e) => setNewTaskData({...newTaskData, assigned_to: e.target.value})}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="담당자명을 입력하세요 (선택사항)"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">마감일</label>
-                <input
-                  type="date"
-                  value={newTaskData.due_date}
-                  onChange={(e) => setNewTaskData({...newTaskData, due_date: e.target.value})}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">업무 설명</label>
-                <textarea
-                  value={newTaskData.description}
-                  onChange={(e) => setNewTaskData({...newTaskData, description: e.target.value})}
-                  rows={3}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="세부업무에 대한 설명을 입력하세요"
-                />
-              </div>
-              
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowTaskModal(false);
-                    setSelectedWorkId(null);
-                  }}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
-                >
-                  취소
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  세부업무 추가
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-=======
       <AddTaskModal
         isOpen={showTaskModal}
         onClose={() => {
@@ -1375,7 +642,6 @@ const WorkStatusManagePage = () => {
         }}
         work={selectedWork}
       />
->>>>>>> 28f8e6c
     </div>
   );
 };

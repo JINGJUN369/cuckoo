@@ -53,7 +53,7 @@ const ProjectDetailPage_v1_2 = () => {
       id: reportId,
       projectId: selectedProject.id,
       projectName: selectedProject.name,
-      modelName: selectedProject.modelName,
+      modelName: selectedProject.model_name || selectedProject.modelName,
       createdBy: profile.name,
       createdAt: new Date().toISOString(),
       projectData: JSON.parse(JSON.stringify(selectedProject)),
@@ -87,9 +87,8 @@ const ProjectDetailPage_v1_2 = () => {
   // 프로젝트별 의견 카운트
   const opinionCount = useMemo(() => {
     if (!selectedProject) return 0;
-    return opinions.filter(opinion => 
-      (opinion.projectId === selectedProject.id || opinion.project_id === selectedProject.id) &&
-      opinion.status !== 'deleted'
+    return opinions.filter(opinion =>
+      opinion.project_id === selectedProject.id
     ).length;
   }, [opinions, selectedProject]);
 
@@ -197,7 +196,7 @@ const ProjectDetailPage_v1_2 = () => {
                 <span>•</span>
                 <span>의견: {opinionCount}개</span>
                 <span>•</span>
-                <span>모델명: {selectedProject.modelName || 'N/A'}</span>
+                <span>모델명: {selectedProject.model_name || selectedProject.modelName || 'N/A'}</span>
               </div>
             </div>
             <div className="flex space-x-3">

@@ -20,7 +20,15 @@ const OpinionList_v1_2 = ({
   className = ""
 }) => {
   const { profile } = useSupabaseAuth();
-  const { opinions, updateOpinion } = useSupabaseProjectStore();
+  const { opinions, updateOpinion, deleteOpinion } = useSupabaseProjectStore();
+
+  // DB의 stage는 INTEGER (1, 2, 3, null) → UI용 문자열로 변환
+  const getStageKey = (stage) => {
+    if (stage === 1 || stage === 'stage1') return 'stage1';
+    if (stage === 2 || stage === 'stage2') return 'stage2';
+    if (stage === 3 || stage === 'stage3') return 'stage3';
+    return 'general';
+  };
 
   // 상태 관리
   const [currentPage, setCurrentPage] = useState(1);
@@ -45,19 +53,19 @@ const OpinionList_v1_2 = ({
     if (!project) return [];
 
     // 프로젝트별 의견 필터링
-    let filtered = opinions.filter(opinion => 
-      opinion.projectId === project.id || opinion.project_id === project.id
+    let filtered = opinions.filter(opinion =>
+      opinion.project_id === project.id
     );
 
-    // Stage별 필터링
+    // Stage별 필터링 (DB는 정수, UI는 문자열)
     if (filterStage !== 'all') {
-      filtered = filtered.filter(opinion => opinion.stage === filterStage);
+      filtered = filtered.filter(opinion => getStageKey(opinion.stage) === filterStage);
     }
 
     // 정렬
     filtered.sort((a, b) => {
-      const dateA = new Date(a.createdAt || a.created_at);
-      const dateB = new Date(b.createdAt || b.created_at);
+      const dateA = new Date(a.created_at);
+      const dateB = new Date(b.created_at);
       
       switch (sortBy) {
         case 'newest':
@@ -81,9 +89,10 @@ const OpinionList_v1_2 = ({
     
     if (project) {
       opinions.forEach(opinion => {
-        if (opinion.projectId === project.id || opinion.project_id === project.id) {
+        if (opinion.project_id === project.id) {
           counts.all++;
-          counts[opinion.stage] = (counts[opinion.stage] || 0) + 1;
+          const stageKey = getStageKey(opinion.stage);
+          counts[stageKey] = (counts[stageKey] || 0) + 1;
         }
       });
     }
@@ -117,8 +126,8 @@ const OpinionList_v1_2 = ({
 
     try {
       const updates = {
-        content: editContent.trim(),
-        updatedAt: new Date().toISOString()
+        message: editContent.trim(),
+        updated_at: new Date().toISOString()
       };
 
       updateOpinion(opinionId, updates);
@@ -137,20 +146,13 @@ const OpinionList_v1_2 = ({
     }
   }, [editContent, updateOpinion, onOpinionUpdate]);
 
-  // 의견 삭제
-  const handleDelete = useCallback((opinionId) => {
+  // 의견 삭제 (DB에서 완전 삭제)
+  const handleDelete = useCallback(async (opinionId) => {
     const confirmed = window.confirm('이 의견을 정말 삭제하시겠습니까?');
     if (!confirmed) return;
 
     try {
-      // 의견 삭제는 상태를 'deleted'로 변경하여 소프트 삭제
-      const updates = {
-        status: 'deleted',
-        deletedAt: new Date().toISOString(),
-        deletedBy: profile?.id
-      };
-
-      updateOpinion(opinionId, updates);
+      await deleteOpinion(opinionId);
 
       if (onOpinionUpdate) {
         onOpinionUpdate();
@@ -161,7 +163,7 @@ const OpinionList_v1_2 = ({
     } catch (error) {
       console.error('❌ [v1.2] Error deleting opinion:', error);
     }
-  }, [profile, updateOpinion, onOpinionUpdate]);
+  }, [deleteOpinion, onOpinionUpdate]);
 
   // Priority 색상 가져오기
   const getPriorityColor = (priority) => {
@@ -174,14 +176,26 @@ const OpinionList_v1_2 = ({
     }
   };
 
-  // Stage 색상 가져오기
+  // Stage 색상 가져오기 (정수/문자열 모두 처리)
   const getStageColor = (stage) => {
-    switch (stage) {
+    const key = getStageKey(stage);
+    switch (key) {
       case 'stage1': return 'text-blue-700 bg-blue-100';
       case 'stage2': return 'text-green-700 bg-green-100';
       case 'stage3': return 'text-purple-700 bg-purple-100';
       case 'general': return 'text-gray-700 bg-gray-100';
       default: return 'text-gray-700 bg-gray-100';
+    }
+  };
+
+  // Stage 라벨 가져오기 (정수/문자열 모두 처리)
+  const getStageLabel = (stage) => {
+    const key = getStageKey(stage);
+    switch (key) {
+      case 'stage1': return 'Stage 1';
+      case 'stage2': return 'Stage 2';
+      case 'stage3': return 'Stage 3';
+      default: return '일반';
     }
   };
 
@@ -253,10 +267,7 @@ const OpinionList_v1_2 = ({
         <div className="space-y-4">
           {paginatedOpinions.map((opinion) => {
             const isEditing = editingOpinion === opinion.id;
-            const canEdit = profile && (profile.id === opinion.createdBy || profile.role === 'admin');
-            const isDeleted = opinion.status === 'deleted';
-
-            if (isDeleted) return null;
+            const canEdit = profile && (profile.id === opinion.created_by || profile.role === 'admin');
 
             return (
               <div 
@@ -268,21 +279,16 @@ const OpinionList_v1_2 = ({
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
                       <span className="text-sm font-medium text-gray-600">
-                        {(opinion.author_name || opinion.createdByName || opinion.createdBy || 'U')[0].toUpperCase()}
+                        {(opinion.author_name || opinion.created_by || 'U')[0].toUpperCase()}
                       </span>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-900">
-                        {opinion.author_name || opinion.createdByName || opinion.createdBy}
+                        {opinion.author_name || opinion.created_by}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {opinion.author_team && (
-                          <span className="text-blue-600 font-medium">
-                            {opinion.author_team} • 
-                          </span>
-                        )}
-                        {new Date(opinion.createdAt || opinion.created_at).toLocaleString()}
-                        {opinion.updatedAt && opinion.updatedAt !== opinion.createdAt && (
+                        {new Date(opinion.created_at).toLocaleString()}
+                        {opinion.updated_at && opinion.updated_at !== opinion.created_at && (
                           <span> (수정됨)</span>
                         )}
                       </p>
@@ -292,10 +298,7 @@ const OpinionList_v1_2 = ({
                   <div className="flex items-center space-x-2">
                     {/* Stage 태그 */}
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStageColor(opinion.stage)}`}>
-                      {opinion.stage === 'general' ? '일반' : 
-                       opinion.stage === 'stage1' ? 'Stage 1' :
-                       opinion.stage === 'stage2' ? 'Stage 2' :
-                       opinion.stage === 'stage3' ? 'Stage 3' : opinion.stage}
+                      {getStageLabel(opinion.stage)}
                     </span>
 
                     {/* Priority 태그 */}

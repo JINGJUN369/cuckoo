@@ -42,7 +42,7 @@ const ProjectCard_v11 = ({
     console.log(`🔄 [ProjectCard] ${project?.name} 진행률:`, progressData);
     
     return progressData;
-  }, [project, project?.updatedAt, project?.id]);
+  }, [project, project?.updated_at, project?.id]);
 
   // D-Day 계산 (메모이제이션)
   const dDay = useMemo(() => {
@@ -177,7 +177,7 @@ const ProjectCard_v11 = ({
               {project.name}
             </h3>
             <p className="text-sm text-gray-600 truncate">
-              {project.modelName || project.id}
+              {project.model_name || project.modelName || project.id}
             </p>
           </div>
           <div className="flex items-center space-x-3 ml-4">
@@ -215,7 +215,7 @@ const ProjectCard_v11 = ({
             </h3>
             <div className="flex items-center space-x-2 text-sm text-gray-600">
               <span className="px-2 py-1 bg-gray-100 rounded-md font-medium">
-                {project.modelName || project.id}
+                {project.model_name || project.modelName || project.id}
               </span>
               {project.stage1?.manufacturer && (
                 <span className="text-gray-500">
@@ -338,7 +338,7 @@ const ProjectCard_v11 = ({
               </h3>
               <div className="flex items-center space-x-3 text-sm text-gray-600">
                 <span className="px-2 py-1 bg-gray-100 rounded font-medium">
-                  {project.modelName || project.id}
+                  {project.model_name || project.modelName || project.id}
                 </span>
                 {project.stage1?.manufacturer && (
                   <span>{project.stage1.manufacturer}</span>

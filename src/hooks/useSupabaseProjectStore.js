@@ -48,7 +48,8 @@ const actionTypes = {
   SET_SELECTED_PROJECT: 'SET_SELECTED_PROJECT',
   SET_CURRENT_VIEW: 'SET_CURRENT_VIEW',
   SET_SHOW_NEW_PROJECT_MODAL: 'SET_SHOW_NEW_PROJECT_MODAL',
-  SET_FILTER_STATUS: 'SET_FILTER_STATUS'
+  SET_FILTER_STATUS: 'SET_FILTER_STATUS',
+  RESTORE_PROJECT: 'RESTORE_PROJECT'
 };
 
 // 리듀서
@@ -109,6 +110,18 @@ function projectReducer(state, action) {
         error: null
       };
     
+    case actionTypes.RESTORE_PROJECT:
+      const restoredProject = state.completedProjects.find(p => p.id === action.payload);
+      return {
+        ...state,
+        completedProjects: state.completedProjects.filter(p => p.id !== action.payload),
+        projects: restoredProject
+          ? [...state.projects, { ...restoredProject, completed: false, completed_at: null, completed_by: null, status: 'active' }]
+          : state.projects,
+        loading: false,
+        error: null
+      };
+
     case actionTypes.SET_COMPLETED_PROJECTS:
       return { ...state, completedProjects: action.payload };
     
@@ -232,10 +245,13 @@ export const SupabaseProjectProvider = React.memo(({ children }) => {
       const newProject = {
         id: generateUUID(),
         name: projectData.name,
-        model_name: projectData.modelName,
+        model_name: projectData.modelName || projectData.model_name,
+        description: projectData.description || '',
         stage1: projectData.stage1 || {},
         stage2: projectData.stage2 || {},
         stage3: projectData.stage3 || {},
+        status: 'active',
+        completed: false,
         created_at: new Date().toISOString(),
         created_by: user.id
       };
@@ -474,6 +490,75 @@ export const SupabaseProjectProvider = React.memo(({ children }) => {
     }
   }, []);
 
+  // 완료된 프로젝트 복원 (completed_projects → projects)
+  const restoreProject = useCallback(async (projectId) => {
+    if (!user) {
+      return { success: false, error: '로그인이 필요합니다' };
+    }
+
+    dispatch({ type: actionTypes.SET_LOADING, payload: true });
+
+    try {
+      // 1. completed_projects에서 프로젝트 데이터 가져오기
+      const { data: project, error: fetchError } = await supabase
+        .from('completed_projects')
+        .select('*')
+        .eq('id', projectId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!project) throw new Error('완료된 프로젝트를 찾을 수 없습니다');
+
+      console.log('📋 Restoring project from completed_projects:', project.name);
+
+      // 2. projects 테이블에 데이터 추가
+      const restoredProject = {
+        id: project.id,
+        name: project.name,
+        model_name: project.model_name,
+        description: project.description,
+        stage1: project.stage1,
+        stage2: project.stage2,
+        stage3: project.stage3,
+        status: 'active',
+        completed: false,
+        created_at: project.created_at,
+        updated_at: new Date().toISOString(),
+        created_by: project.created_by,
+        updated_by: user.id,
+        completed_at: null,
+        completed_by: null
+      };
+
+      const { error: insertError } = await supabase
+        .from('projects')
+        .insert([restoredProject]);
+
+      if (insertError) throw insertError;
+
+      // 3. completed_projects에서 삭제
+      const { error: deleteError } = await supabase
+        .from('completed_projects')
+        .delete()
+        .eq('id', projectId);
+
+      if (deleteError) throw deleteError;
+
+      console.log('✅ 프로젝트 복원 성공:', project.name);
+
+      // 4. 로컬 상태 업데이트
+      dispatch({ type: actionTypes.RESTORE_PROJECT, payload: projectId });
+      dispatch({ type: actionTypes.SET_LOADING, payload: false });
+
+      return { success: true };
+    } catch (error) {
+      console.error('❌ 프로젝트 복원 실패:', error);
+      dispatch({ type: actionTypes.SET_ERROR, payload: error.message });
+      dispatch({ type: actionTypes.SET_LOADING, payload: false });
+      return { success: false, error: error.message };
+    }
+  }, [user]);
+
   // 의견 관련 함수들
   const loadOpinions = useCallback(async (projectId) => {
     if (!projectId) return;
@@ -703,7 +788,8 @@ export const SupabaseProjectProvider = React.memo(({ children }) => {
     completeProject,
     moveToCompleted,
     loadCompletedProjects,
-    
+    restoreProject,
+
     // 의견 관련 액션
     loadOpinions,
     addOpinion,
@@ -737,6 +823,7 @@ export const SupabaseProjectProvider = React.memo(({ children }) => {
     completeProject,
     moveToCompleted,
     loadCompletedProjects,
+    restoreProject,
     loadOpinions,
     addOpinion,
     updateOpinion,

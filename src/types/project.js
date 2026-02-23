@@ -24,55 +24,73 @@ export const Priority = {
 // Stage structure based on existing data
 export const createStage1 = () => ({
   productGroup: '',
+  modelName: '',
   manufacturer: '',
   vendor: '',
-  productTool: '',
   derivativeModel: '',
   launchDate: '',
   launchDateExecuted: false,
-  researcher1: '',
-  researcher2: '',
+  productManager: '',
+  mechanicalEngineer: '',
+  circuitEngineer: '',
   massProductionDate: '',
   massProductionDateExecuted: false,
   notes: ''
 });
 
+// Required fields definition for progress calculation
+export const getRequiredFields = (stageName) => {
+  const requiredFieldsMap = {
+    stage1: {
+      required: ['productGroup', 'modelName', 'manufacturer', 'productManager'],
+      requiredDates: ['launchDate', 'massProductionDate'],
+      optional: ['vendor', 'derivativeModel', 'mechanicalEngineer', 'circuitEngineer']
+    },
+    stage2: {
+      required: ['installationParty', 'serviceParty'],
+      requiredDates: ['pilotProductionDate', 'techTransferDate', 'trainingDate', 'userManualDate', 'techManualDate'],
+      optional: []
+    },
+    stage3: {
+      required: ['bomManager', 'priceManager', 'partsReceiptManager'],
+      requiredDates: ['firstPartsOrderDate', 'bomCompletionDate', 'priceRegistrationDate', 'partsReceiptDate', 'branchOrderGuideDate'],
+      optional: []
+    }
+  };
+
+  return requiredFieldsMap[stageName] || { required: [], requiredDates: [], optional: [] };
+};
+
 export const createStage2 = () => ({
   pilotProductionDate: '',
   pilotProductionDateExecuted: false,
-  pilotQuantity: '',
-  pilotReceiveDate: '',
-  pilotReceiveDateExecuted: false,
   techTransferDate: '',
   techTransferDateExecuted: false,
-  installationEntity: '',
-  serviceEntity: '',
+  installationParty: '',
+  serviceParty: '',
   trainingDate: '',
   trainingDateExecuted: false,
-  orderAcceptanceDate: '',
-  orderAcceptanceDateExecuted: false,
-  trainingCompleted: false,
-  manualUploaded: false,
-  techGuideUploaded: false,
+  userManualDate: '',
+  userManualDateExecuted: false,
+  techManualDate: '',
+  techManualDateExecuted: false,
   notes: ''
 });
 
 export const createStage3 = () => ({
-  initialProductionDate: '',
-  initialProductionDateExecuted: false,
-  firstOrderDate: '',
-  firstOrderDateExecuted: false,
+  firstPartsOrderDate: '',
+  firstPartsOrderDateExecuted: false,
   bomManager: '',
-  bomTargetDate: '',
-  bomTargetDateExecuted: false,
+  bomCompletionDate: '',
+  bomCompletionDateExecuted: false,
   priceManager: '',
-  priceTargetDate: '',
-  priceTargetDateExecuted: false,
-  partsDeliveryDate: '',
-  partsDeliveryDateExecuted: false,
-  partsReceived: false,
-  branchOrderEnabled: false,
-  issueResolved: false,
+  priceRegistrationDate: '',
+  priceRegistrationDateExecuted: false,
+  partsReceiptDate: '',
+  partsReceiptDateExecuted: false,
+  partsReceiptManager: '',
+  branchOrderGuideDate: '',
+  branchOrderGuideDateExecuted: false,
   notes: ''
 });
 
@@ -144,85 +162,68 @@ export const getOverallProgress = (project) => {
   return progress.overall || 0;
 };
 
-// Calculate progress for individual stage (날짜 50% + 실행완료 50%)
+// Calculate progress for individual stage - ONLY COUNT REQUIRED FIELDS
 export const getStageProgress = (project, stageName) => {
   const stage = project[stageName];
   if (!stage) return 0;
 
-  const fieldNames = Object.keys(stage);
-  
-  // 날짜 필드들 (실행완료와 쌍을 이루는 것들)
-  const dateFields = fieldNames.filter(name => 
-    name.endsWith('Date') && 
-    name !== 'notes' &&
-    fieldNames.includes(name + 'Executed') // 대응하는 Executed 필드가 있는 경우만
-  );
-  
-  // 실행완료 필드들 (날짜와 쌍을 이루는 것들)
-  const executedFields = dateFields.map(dateField => dateField + 'Executed');
-  
-  // 일반 텍스트 필드들 (날짜가 아니고 실행완료도 아닌 것들)
-  const regularFields = fieldNames.filter(name => 
-    !name.endsWith('Date') &&
-    !name.endsWith('Executed') &&
-    !['trainingCompleted', 'manualUploaded', 'techGuideUploaded', 'partsReceived', 'branchOrderEnabled', 'issueResolved', 'notes'].includes(name)
-  );
-  
-  // 기타 체크박스 필드들
-  const otherCheckboxFields = fieldNames.filter(name => 
-    ['trainingCompleted', 'manualUploaded', 'techGuideUploaded', 'partsReceived', 'branchOrderEnabled', 'issueResolved'].includes(name)
-  );
+  // Get required fields definition for this stage
+  const requiredFieldsConfig = getRequiredFields(stageName);
+  const { required, requiredDates } = requiredFieldsConfig;
 
   let totalScore = 0;
   let achievedScore = 0;
 
-  // 날짜 + 실행완료 쌍 처리 (각각 0.5점씩)
-  dateFields.forEach(dateField => {
-    const executedField = dateField + 'Executed';
-    
-    totalScore += 1.0; // 날짜(0.5) + 실행완료(0.5) = 1.0점
-    
-    // 날짜 입력 완료 시 0.5점
-    if (stage[dateField] && stage[dateField].toString().trim() !== '') {
-      achievedScore += 0.5;
-    }
-    
-    // 실행완료 체크 시 0.5점
-    if (stage[executedField] === true) {
-      achievedScore += 0.5;
-    }
-  });
-  
-  // 일반 텍스트 필드들 (각각 1점)
-  regularFields.forEach(field => {
-    totalScore += 1.0;
-    if (stage[field] && stage[field].toString().trim() !== '') {
-      achievedScore += 1.0;
-    }
-  });
-  
-  // 기타 체크박스 필드들 (각각 1점)
-  otherCheckboxFields.forEach(field => {
-    totalScore += 1.0;
-    if (stage[field] === true) {
-      achievedScore += 1.0;
-    }
-  });
+  console.log(`🎯 [Progress v3] ${stageName} - Required fields config:`, requiredFieldsConfig);
+
+  // 1. Required date fields + execution (각각 날짜 0.5점 + 실행완료 0.5점 = 1.0점)
+  if (requiredDates) {
+    requiredDates.forEach(dateField => {
+      const executedField = dateField + 'Executed';
+
+      totalScore += 1.0; // 날짜(0.5) + 실행완료(0.5) = 1.0점
+
+      // 날짜 입력 완료 시 0.5점
+      const dateValue = stage[dateField];
+      if (dateValue && dateValue.toString().trim() !== '') {
+        achievedScore += 0.5;
+      }
+
+      // 실행완료 체크 시 0.5점
+      const executedValue = stage[executedField];
+      if (executedValue === true) {
+        achievedScore += 0.5;
+      }
+
+      console.log(`   📅 ${dateField}: "${dateValue}" (${dateValue ? '0.5' : '0'}) + ${executedField}: ${executedValue} (${executedValue ? '0.5' : '0'})`);
+    });
+  }
+
+  // 2. Required text fields (각각 1점)
+  if (required) {
+    required.forEach(field => {
+      totalScore += 1.0;
+      const value = stage[field];
+      if (value && value.toString().trim() !== '') {
+        achievedScore += 1.0;
+      }
+      console.log(`   📝 ${field}: "${value}" (${value ? '1.0' : '0'})`);
+    });
+  }
+
 
   const percentage = totalScore > 0 ? (achievedScore / totalScore) * 100 : 0;
   const clampedPercentage = Math.max(0, Math.min(100, Math.round(percentage)));
-  
+
   // 상세 디버그 로깅
-  console.log(`📊 [Progress v2] ${stageName}:`, {
+  console.log(`📊 [Progress v3] ${stageName}:`, {
     totalScore: totalScore.toFixed(1),
     achievedScore: achievedScore.toFixed(1),
     percentage: percentage.toFixed(2),
     clampedPercentage,
-    dateFields: { count: dateFields.length, fields: dateFields },
-    executedFields: { count: executedFields.length, fields: executedFields },
-    regularFields: { count: regularFields.length, fields: regularFields },
-    otherCheckboxFields: { count: otherCheckboxFields.length, fields: otherCheckboxFields }
+    requiredConfig: requiredFieldsConfig,
+    stageData: stage
   });
-  
+
   return clampedPercentage;
 };
